@@ -2,7 +2,9 @@ package drawable
 
 import "github.com/hajimehoshi/ebiten/v2"
 
-type InputField struct{}
+type InputField struct {
+	numbers []int
+}
 
 func NewInputField() *InputField {
 	return &InputField{}

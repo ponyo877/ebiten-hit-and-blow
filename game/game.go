@@ -58,28 +58,29 @@ func (g *Game) init() {
 	w, h := g.Layout(420, 600)
 	g.playerBoard = drawable.NewPlayerBoard(g.myPlayer, g.emPlayer, g.myHand, g.emHand, w, h/5, color.RGBA{0, 0, 255, 255})
 	es := []*drawable.Estimate{
-		drawable.NewEstimate(50, 50, []int{1, 2, 3}, 40, color.White, color.Black),
-		drawable.NewEstimate(50, 50, []int{4, 5, 6}, 40, color.White, color.Black),
-		drawable.NewEstimate(50, 50, []int{7, 8, 9}, 40, color.White, color.Black),
+		drawable.NewEstimate(30, 30, []int{1, 2, 3}, 40, color.White, color.Black),
+		drawable.NewEstimate(30, 30, []int{4, 5, 6}, 40, color.White, color.Black),
+		drawable.NewEstimate(30, 30, []int{7, 8, 9}, 40, color.White, color.Black),
 	}
 	hs := []*drawable.Hint{
-		drawable.NewHint(50, 50, 0, 0, 40, color.White, color.Black),
-		drawable.NewHint(50, 50, 1, 0, 40, color.White, color.Black),
-		drawable.NewHint(50, 50, 2, 0, 40, color.White, color.Black),
+		drawable.NewHint(30, 30, 0, 0, 40, color.White, color.Black),
+		drawable.NewHint(30, 30, 1, 0, 40, color.White, color.Black),
+		drawable.NewHint(30, 30, 2, 0, 40, color.White, color.Black),
 	}
 	feedback := []*drawable.Feedback{
-		drawable.NewFeedback(150, 50, es[0], hs[0]),
-		drawable.NewFeedback(150, 50, es[1], hs[1]),
-		drawable.NewFeedback(150, 50, es[2], hs[2]),
+		drawable.NewFeedback(es[0], hs[0]),
+		drawable.NewFeedback(es[1], hs[1]),
+		drawable.NewFeedback(es[2], hs[2]),
 	}
-	g.myHistory = drawable.NewHistory(0, 0, feedback)
+	g.myHistory = drawable.NewHistory(150, 30, "あなたの推理", color.White, feedback)
 	feedback = []*drawable.Feedback{
-		drawable.NewFeedback(150, 50, es[0], hs[1]),
-		drawable.NewFeedback(150, 50, es[2], hs[0]),
-		drawable.NewFeedback(150, 50, es[1], hs[2]),
+		drawable.NewFeedback(es[0], hs[1]),
+		drawable.NewFeedback(es[2], hs[0]),
+		drawable.NewFeedback(es[1], hs[2]),
 	}
-	g.emHistory = drawable.NewHistory(0, 0, feedback)
+	g.emHistory = drawable.NewHistory(150, 30, "相手の推理", color.White, feedback)
 	g.historyBoard = drawable.NewHistoryBoard(g.myHistory, g.emHistory, w, h/2, color.RGBA{0, 0, 255, 255})
+
 }
 
 func NewGame() *Game {

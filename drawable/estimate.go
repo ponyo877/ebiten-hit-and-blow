@@ -19,6 +19,10 @@ func NewEstimate(w, h int, ns []int, ts int, bgc, txc color.Color) *Estimate {
 	return &Estimate{w, h, ns, ts, bgc, txc}
 }
 
+func (e *Estimate) Bounds() (int, int) {
+	return e.w * len(e.numbers), e.h
+}
+
 func (e *Estimate) Image() *ebiten.Image {
 	img := ebiten.NewImage(e.w, e.h)
 	img.Fill(e.bgColor)

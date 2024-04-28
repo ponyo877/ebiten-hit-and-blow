@@ -19,6 +19,10 @@ func NewHint(w, h, hi, b, ts int, bgc, tc color.Color) *Hint {
 	return &Hint{w, h, hi, b, ts, bgc, tc}
 }
 
+func (h *Hint) Bounds() (int, int) {
+	return h.w * 2, h.h
+}
+
 func (h *Hint) Image() *ebiten.Image {
 	img := ebiten.NewImage(h.w, h.h)
 	img.Fill(h.bgColor)
