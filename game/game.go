@@ -26,6 +26,7 @@ type Game struct {
 	myHistory    *drawable.History
 	emHistory    *drawable.History
 	historyBoard *drawable.HistoryBoard
+	inputBoard   *drawable.InputBoard
 }
 
 func (g *Game) init() {
@@ -80,7 +81,22 @@ func (g *Game) init() {
 	}
 	g.emHistory = drawable.NewHistory(150, 30, "相手の推理", color.White, feedback)
 	g.historyBoard = drawable.NewHistoryBoard(g.myHistory, g.emHistory, w, h/2, color.RGBA{0, 0, 255, 255})
-
+	timer := drawable.NewTimer(50, 10, 10, color.White, color.Black)
+	inputField := drawable.NewInputField(50, 30, 30, color.White, color.Black, []int{0, 1, 2})
+	buttons := []*drawable.Button{
+		drawable.NewNumberButton(0, 30, 30, 30, color.White, color.Black),
+		drawable.NewNumberButton(1, 30, 30, 30, color.White, color.Black),
+		drawable.NewNumberButton(2, 30, 30, 30, color.White, color.Black),
+		drawable.NewNumberButton(3, 30, 30, 30, color.White, color.Black),
+		drawable.NewNumberButton(4, 30, 30, 30, color.White, color.Black),
+		drawable.NewNumberButton(5, 30, 30, 30, color.White, color.Black),
+		drawable.NewNumberButton(6, 30, 30, 30, color.White, color.Black),
+		drawable.NewNumberButton(7, 30, 30, 30, color.White, color.Black),
+		drawable.NewNumberButton(8, 30, 30, 30, color.White, color.Black),
+		drawable.NewNumberButton(9, 30, 30, 30, color.White, color.Black),
+	}
+	tenkey := drawable.NewTenkey(buttons, 5)
+	g.inputBoard = drawable.NewInputBoard(w, h/4, "相手は考えています...", timer, inputField, tenkey, color.RGBA{0, 0, 255, 255})
 }
 
 func NewGame() *Game {
@@ -107,4 +123,5 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 	g.playerBoard.Draw(screen, 0, 0)
 	g.historyBoard.Draw(screen, 0, screen.Bounds().Dy()/5)
+	g.inputBoard.Draw(screen, 0, screen.Bounds().Dy()/5*3)
 }

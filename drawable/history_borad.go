@@ -21,7 +21,6 @@ func (hb *HistoryBoard) Image() *ebiten.Image {
 	img := ebiten.NewImage(hb.w, hb.h)
 	img.Fill(hb.bgColor)
 	return img
-
 }
 
 func (hb *HistoryBoard) Draw(screen *ebiten.Image, x, y int) {

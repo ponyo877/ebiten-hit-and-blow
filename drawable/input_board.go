@@ -7,6 +7,7 @@ import (
 )
 
 type InputBoard struct {
+	w, h       int
 	message    string
 	timer      *Timer
 	inputField *InputField
@@ -14,24 +15,30 @@ type InputBoard struct {
 	color      color.Color
 }
 
-func NewInputBoard(m string, ti *Timer, i *InputField, te *Tenkey, c color.Color) *InputBoard {
-	return &InputBoard{m, ti, i, te, c}
+func NewInputBoard(w, h int, m string, ti *Timer, i *InputField, te *Tenkey, c color.Color) *InputBoard {
+	return &InputBoard{w, h, m, ti, i, te, c}
 }
 
-func (i *InputBoard) Image() *ebiten.Image {
-	return nil
+func (ib *InputBoard) Image() *ebiten.Image {
+	img := ebiten.NewImage(ib.w, ib.h)
+	img.Fill(ib.color)
+	return img
 }
 
-func (i *InputBoard) SetMessage(m string) {
-	i.message = m
+func (ib *InputBoard) SetMessage(m string) {
+	ib.message = m
 }
 
-func (i *InputBoard) Draw(screen *ebiten.Image) {
-	inputBoard := i.Image()
-	inputBoard.Fill(i.color)
-	NewText(i.message, mplusNormalFont(10), color.Black).Draw(inputBoard, 0, 0)
-	i.timer.Draw(inputBoard, 0, 10)
-	i.inputField.Draw(inputBoard)
-	i.tenkey.Draw(inputBoard)
-	screen.DrawImage(inputBoard, nil)
+func (ib *InputBoard) Draw(screen *ebiten.Image, x, y int) {
+	img := ib.Image()
+	img.Fill(ib.color)
+	NewText(ib.message, mplusNormalFont(10), color.Black).Draw(img, 0, 0)
+	ib.timer.Draw(img, 0, 10)
+	iw, _ := ib.inputField.Bounds()
+	ib.inputField.Draw(img, img.Bounds().Dx()/2-iw/2, 40)
+	tw, _ := ib.tenkey.Bounds()
+	ib.tenkey.Draw(img, img.Bounds().Dx()/2-tw/2, 100)
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Translate(float64(x), float64(y))
+	screen.DrawImage(img, op)
 }

@@ -11,12 +11,12 @@ func NewTenkey(bs []*Button, m int) *Tenkey {
 	return &Tenkey{bs, m}
 }
 
-func (t *Tenkey) Image() *ebiten.Image {
-	return nil
+func (t *Tenkey) Bounds() (int, int) {
+	return t.buttons[0].w*len(t.buttons) + t.margin*(len(t.buttons)-1), t.buttons[0].h
 }
 
-func (t *Tenkey) Draw(screen *ebiten.Image) {
+func (t *Tenkey) Draw(screen *ebiten.Image, x, y int) {
 	for i, b := range t.buttons {
-		b.Draw(screen, i*(b.w+t.margin), 0)
+		b.Draw(screen, x+i*(b.w+t.margin), y)
 	}
 }

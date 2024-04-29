@@ -25,6 +25,6 @@ func NewButton(t string, w, h, ts int, bgc, txtc color.Color) *Button {
 
 func (b *Button) Draw(screen *ebiten.Image, x, y int) {
 	rect := NewRect(x, y, b.w, b.h, b.bgColor)
+	NewText(b.text, mplusNormalFont(b.txtSize), b.txtColor).Draw(rect.Image(), 0, 0)
 	rect.Draw(screen)
-	NewText(b.text, mplusNormalFont(b.txtSize), b.txtColor).Draw(rect.Image(), x, y)
 }
