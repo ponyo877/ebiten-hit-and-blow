@@ -34,9 +34,9 @@ func (p *Player) Draw(screen *ebiten.Image, x, y int) {
 	img := p.Image()
 	p.icon.Draw(img, 0, 0)
 	iconW := p.icon.w
-	txtFont := mplusNormalFont(p.txtSize)
-	NewText(p.name, txtFont, color.Black).Draw(img, iconW, 0)
-	NewText(fmt.Sprint(p.rate), txtFont, color.Black).Draw(img, iconW, p.txtSize+margin)
+	// txtFont := mplusNormalFont(p.txtSize)
+	NewText(p.name, p.txtSize, color.Black).Draw(img, iconW, 0)
+	NewText(fmt.Sprint(p.rate), p.txtSize, color.Black).Draw(img, iconW, p.txtSize+margin)
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(float64(x), float64(y))
 	screen.DrawImage(img, op)

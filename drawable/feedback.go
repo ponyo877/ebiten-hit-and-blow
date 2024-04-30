@@ -1,24 +1,32 @@
 package drawable
 
-import "github.com/hajimehoshi/ebiten/v2"
+import (
+	"image/color"
+
+	"github.com/hajimehoshi/ebiten/v2"
+)
 
 type Feedback struct {
-	estimate *Estimate
-	hint     *Hint
+	hand *Cards
+	hint *Cards
 }
 
-func NewFeedback(e *Estimate, hi *Hint) *Feedback {
-	return &Feedback{e, hi}
+func NewFeedback(ha *Cards, hi *Cards) *Feedback {
+	return &Feedback{ha, hi}
+}
+
+func NewEmptyFeedback(w, h, ts, m int, bgc, txc color.Color) *Feedback {
+	return NewFeedback(NewEmptyCards(w, h, ts, m, bgc, txc), NewEmptyCards(w, h, ts, m, bgc, txc))
 }
 
 func (f *Feedback) Bounds() (int, int) {
-	ew, eh := f.estimate.Bounds()
+	ew, eh := f.hand.Bounds()
 	hw, _ := f.hint.Bounds()
 	return ew + hw, eh
 }
 
 func (f *Feedback) Draw(screen *ebiten.Image, x, y int) {
-	f.estimate.Draw(screen, x, y)
-	ew, _ := f.estimate.Bounds()
+	f.hand.Draw(screen, x, y)
+	ew, _ := f.hand.Bounds()
 	f.hint.Draw(screen, x+ew, y)
 }

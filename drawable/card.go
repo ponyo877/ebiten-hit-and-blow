@@ -13,18 +13,25 @@ type Card struct {
 	txtSize  int
 	bgColor  color.Color
 	txtColor color.Color
+	r        *Rect
+	t        *Text
+}
+
+func NewCard(n string, w, h, ts int, bgc, txc color.Color) *Card {
+	r := NewRect(w, h, bgc)
+	t := NewText(n, ts, txc)
+	return &Card{n, w, h, ts, bgc, txc, r, t}
 }
 
 func NewNumberCard(n, w, h, t int, bgc, txtc color.Color) *Card {
 	return NewCard(fmt.Sprint(n), w, h, t, bgc, txtc)
 }
 
-func NewCard(n string, w, h, t int, bgc, txtc color.Color) *Card {
-	return &Card{n, w, h, t, bgc, txtc}
+func (c *Card) Bounds() (int, int) {
+	return c.w, c.h
 }
 
 func (c *Card) Draw(screen *ebiten.Image, x, y int) {
-	rect := NewRect(x, y, c.w, c.h, c.bgColor)
-	NewText(c.text, mplusNormalFont(c.txtSize), c.txtColor).Draw(rect.Image(), 0, 0)
-	rect.Draw(screen)
+	c.t.Draw(c.r.Image(), 0, 0)
+	c.r.Draw(screen, x, y)
 }

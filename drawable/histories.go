@@ -6,25 +6,35 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
+var maxCount = 10
+
 type History struct {
-	w, h        int
-	header      string
-	headerColor color.Color
-	feedbacks   []*Feedback
+	feedbacks  []*Feedback
+	w, h       int
+	headerText string
+	bgColor    color.Color
+	txtColor   color.Color
+	rect       *Rect
+	text       *Text
+	emptyFB    *Rect
 }
 
-func NewHistory(w, h int, hd string, hdColor color.Color, fs []*Feedback) *History {
-	return &History{w, h, hd, hdColor, fs}
+func NewHistory(fs []*Feedback, w, h int, hdTxt string, bgc, txc color.Color) *History {
+	rect := NewRect(w, h, bgc)
+	text := NewText(hdTxt, h, txc) // .Draw(img, 0, 0)
+	fw, fh := fs[0].Bounds()
+	emptyFB := NewRect(fw, fh, bgc)
+	return &History{fs, w, h, hdTxt, bgc, txc, rect, text, emptyFB}
 }
 
 func (h *History) Draw(screen *ebiten.Image, x, y int) {
-	img := ebiten.NewImage(h.w, h.h)
-	img.Fill(h.headerColor)
-	NewText(h.header, mplusNormalFont(h.h), color.Black).Draw(img, 0, 0)
-	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Translate(float64(x), float64(y))
-	screen.DrawImage(img, op)
+	var i int
+	h.text.Draw(h.rect.Image(), 0, 0)
+	h.rect.Draw(screen, x, y)
 	for i, f := range h.feedbacks {
 		f.Draw(screen, x, y+(i+1)*h.h)
+	}
+	for i = len(h.feedbacks); i < maxCount; i++ {
+		h.emptyFB.Draw(screen, x, y+i*h.h)
 	}
 }

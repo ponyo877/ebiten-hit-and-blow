@@ -9,13 +9,13 @@ import (
 type PlayerBoard struct {
 	myPlayer *Player
 	emPlayer *Player
-	myHand   *Hand
-	emHand   *Hand
+	myHand   *Cards
+	emHand   *Cards
 	w, h     int
 	bgColor  color.Color
 }
 
-func NewPlayerBoard(mp, ep *Player, mh, eh *Hand, w, h int, bgc color.Color) *PlayerBoard {
+func NewPlayerBoard(mp, ep *Player, mh, eh *Cards, w, h int, bgc color.Color) *PlayerBoard {
 	return &PlayerBoard{mp, ep, mh, eh, w, h, bgc}
 }
 

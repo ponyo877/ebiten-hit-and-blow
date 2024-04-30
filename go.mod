@@ -3,6 +3,7 @@ module github.com/ponyo877/ebiten-hit-and-blow
 go 1.21.4
 
 require (
+	github.com/hajimehoshi/ebiten v1.12.12
 	github.com/hajimehoshi/ebiten/v2 v2.7.2
 	golang.org/x/image v0.15.0
 )

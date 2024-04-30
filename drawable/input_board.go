@@ -10,12 +10,12 @@ type InputBoard struct {
 	w, h       int
 	message    string
 	timer      *Timer
-	inputField *InputField
+	inputField *Cards
 	tenkey     *Tenkey
 	color      color.Color
 }
 
-func NewInputBoard(w, h int, m string, ti *Timer, i *InputField, te *Tenkey, c color.Color) *InputBoard {
+func NewInputBoard(w, h int, m string, ti *Timer, i *Cards, te *Tenkey, c color.Color) *InputBoard {
 	return &InputBoard{w, h, m, ti, i, te, c}
 }
 
@@ -32,7 +32,7 @@ func (ib *InputBoard) SetMessage(m string) {
 func (ib *InputBoard) Draw(screen *ebiten.Image, x, y int) {
 	img := ib.Image()
 	img.Fill(ib.color)
-	NewText(ib.message, mplusNormalFont(10), color.Black).Draw(img, 0, 0)
+	NewText(ib.message, 10, color.Black).Draw(img, 0, 0)
 	ib.timer.Draw(img, 0, 10)
 	iw, _ := ib.inputField.Bounds()
 	ib.inputField.Draw(img, img.Bounds().Dx()/2-iw/2, 40)
