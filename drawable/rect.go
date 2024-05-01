@@ -14,12 +14,15 @@ type Rect struct {
 
 func NewRect(w, h int, c color.Color) *Rect {
 	rect := ebiten.NewImage(w, h)
-	rect.Fill(c)
 	return &Rect{w, h, c, rect}
 }
 
 func (r *Rect) Image() *ebiten.Image {
 	return r.image
+}
+
+func (r *Rect) Fill() {
+	r.image.Fill(r.color)
 }
 
 func (r *Rect) Draw(screen *ebiten.Image, x, y int) {

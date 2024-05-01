@@ -41,7 +41,6 @@ func (t *Text) Bounds() (int, int) {
 
 func (t *Text) Draw(screen *ebiten.Image, x, y int) {
 	textOp := &text.DrawOptions{}
-	// textOp.GeoM.Translate(float64(x)+float64(screen.Bounds().Dx())/2, float64(y)+float64(screen.Bounds().Dy())/2)
 	textOp.ColorScale.ScaleWithColor(t.color)
 	textOp.LineSpacing = float64(t.size)
 	textOp.PrimaryAlign = text.AlignCenter
@@ -49,15 +48,14 @@ func (t *Text) Draw(screen *ebiten.Image, x, y int) {
 	textOp.Filter = ebiten.FilterLinear
 	// fontsRoGSanSrfStd, _ := os.ReadFile("./drawable/RoGSanSrfStd-Bd.otf")
 	// s, err := text.NewGoTextFaceSource(bytes.NewReader(fontsRoGSanSrfStd))
-	s, err := text.NewGoTextFaceSource(bytes.NewReader(fonts.MPlus1pRegular_ttf))
+	source, err := text.NewGoTextFaceSource(bytes.NewReader(fonts.MPlus1pRegular_ttf))
 	if err != nil {
 		log.Fatal(err)
 	}
 	font := &text.GoTextFace{
-		Source: s,
+		Source: source,
 		Size:   float64(t.size),
 	}
 	textOp.GeoM.Translate(float64(x+screen.Bounds().Dx()/2), float64(y+screen.Bounds().Dy()/2))
-	// text.Draw(screen, t.text, text.NewGoXFace(t.font), textOp)
 	text.Draw(screen, t.text, font, textOp)
 }

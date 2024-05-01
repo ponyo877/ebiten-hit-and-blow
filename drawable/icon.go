@@ -15,6 +15,10 @@ func NewIcon(w, h int, i image.Image) *Icon {
 	return &Icon{w, h, i}
 }
 
+func (i *Icon) Bounds() (int, int) {
+	return i.w, i.h
+}
+
 func (i *Icon) Draw(screen *ebiten.Image, x, y int) {
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Scale(float64(i.w)/float64(i.image.Bounds().Dx()), float64(i.h)/float64(i.image.Bounds().Dy()))

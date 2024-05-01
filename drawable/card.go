@@ -8,19 +8,16 @@ import (
 )
 
 type Card struct {
-	text     string
-	w, h     int
-	txtSize  int
-	bgColor  color.Color
-	txtColor color.Color
-	r        *Rect
-	t        *Text
+	w, h    int
+	txtSize int
+	base    *Rect
+	text    *Text
 }
 
 func NewCard(n string, w, h, ts int, bgc, txc color.Color) *Card {
-	r := NewRect(w, h, bgc)
-	t := NewText(n, ts, txc)
-	return &Card{n, w, h, ts, bgc, txc, r, t}
+	base := NewRect(w, h, bgc)
+	text := NewText(n, ts, txc)
+	return &Card{w, h, ts, base, text}
 }
 
 func NewNumberCard(n, w, h, t int, bgc, txtc color.Color) *Card {
@@ -32,6 +29,7 @@ func (c *Card) Bounds() (int, int) {
 }
 
 func (c *Card) Draw(screen *ebiten.Image, x, y int) {
-	c.t.Draw(c.r.Image(), 0, 0)
-	c.r.Draw(screen, x, y)
+	c.base.Fill()
+	c.text.Draw(c.base.Image(), 0, 0)
+	c.base.Draw(screen, x, y)
 }

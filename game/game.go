@@ -11,25 +11,14 @@ import (
 )
 
 type Game struct {
-	name         string
-	rate         int
-	icon         *drawable.Icon
-	myPlayer     *drawable.Player
-	emPlayer     *drawable.Player
-	myNumbers    []int
-	emNumbers    []int
-	myHand       *drawable.Cards
-	emHand       *drawable.Cards
 	playerBoard  *drawable.PlayerBoard
-	myHistory    *drawable.History
-	emHistory    *drawable.History
 	historyBoard *drawable.HistoryBoard
 	inputBoard   *drawable.InputBoard
 }
 
 func (g *Game) init() {
-	g.name = "NoName"
-	g.rate = 1500
+	name := "NoName"
+	rate := 1500
 	// file, _ := os.Open("sample.png")
 	// buf := new(bytes.Buffer)
 	// io.Copy(buf, file)
@@ -47,27 +36,13 @@ func (g *Game) init() {
 			img.Set(j, i, color.RGBA{255, 255, 0, 0})
 		}
 	}
-	g.icon = drawable.NewIcon(50, 50, img)
-	g.myPlayer = drawable.NewPlayer(150, 50, 10, g.icon, g.name, g.rate, color.White)
-	g.emPlayer = drawable.NewPlayer(150, 50, 10, g.icon, g.name, g.rate, color.White)
-	cards := []*drawable.Card{}
-	g.myNumbers = []int{0, 1, 2}
-	for _, n := range g.myNumbers {
-		c := drawable.NewNumberCard(n, 50, 75, 40, color.White, color.Black)
-		cards = append(cards, c)
-	}
-
-	g.myHand = drawable.NewNumberCards(g.myNumbers, 50, 75, 40, 5, color.White, color.Black)
-	// g.myHand = drawable.NewHand(myHands, 5)
-	cards = []*drawable.Card{}
-	g.emNumbers = []int{9, 8, 7}
-	for _, n := range g.emNumbers {
-		c := drawable.NewNumberCard(n, 50, 75, 40, color.White, color.Black)
-		cards = append(cards, c)
-	}
-	g.emHand = drawable.NewNumberCards(g.emNumbers, 50, 75, 40, 5, color.White, color.Black)
+	icon := drawable.NewIcon(50, 50, img)
+	myPlayer := drawable.NewPlayer(150, 50, 10, icon, name, rate, color.White, color.Black)
+	emPlayer := drawable.NewPlayer(150, 50, 10, icon, name, rate, color.White, color.Black)
+	myHand := drawable.NewNumberCards([]int{0, 1, 2}, 50, 75, 40, 5, color.White, color.Black)
+	emHand := drawable.NewNumberCards([]int{9, 8, 7}, 50, 75, 40, 5, color.White, color.Black)
 	w, h := g.Layout(420, 600)
-	g.playerBoard = drawable.NewPlayerBoard(g.myPlayer, g.emPlayer, g.myHand, g.emHand, w, h/5, color.RGBA{0, 0, 255, 255})
+	g.playerBoard = drawable.NewPlayerBoard(myPlayer, emPlayer, myHand, emHand, w, h/5, color.RGBA{0, 0, 255, 255})
 	es := []*drawable.Cards{
 		drawable.NewNumberCards([]int{1, 2, 3}, 30, 30, 40, 0, color.White, color.Black),
 		drawable.NewNumberCards([]int{4, 5, 6}, 30, 30, 40, 0, color.White, color.Black),
@@ -83,16 +58,15 @@ func (g *Game) init() {
 		drawable.NewFeedback(es[1], hs[1]),
 		drawable.NewFeedback(es[2], hs[2]),
 	}
-	g.myHistory = drawable.NewHistory(feedback, 150, 30, "あなたの推理", color.White, color.Black)
+	myHistory := drawable.NewHistory(feedback, 150, 30, "あなたの推理", color.White, color.Black)
 	feedback = []*drawable.Feedback{
 		drawable.NewFeedback(es[0], hs[1]),
 		drawable.NewFeedback(es[2], hs[0]),
 		drawable.NewFeedback(es[1], hs[2]),
 	}
-	g.emHistory = drawable.NewHistory(feedback, 150, 30, "相手の推理", color.White, color.Black)
-	g.historyBoard = drawable.NewHistoryBoard(g.myHistory, g.emHistory, w, h/2, color.RGBA{0, 0, 255, 255})
+	emHistory := drawable.NewHistory(feedback, 150, 30, "相手の推理", color.White, color.Black)
+	g.historyBoard = drawable.NewHistoryBoard(myHistory, emHistory, w, h/2, color.RGBA{0, 0, 255, 255})
 	timer := drawable.NewTimer(50, 10, 10, color.White, color.Black)
-	// drawable.NewInputField(50, 30, 30, color.White, color.Black, []int{0, 1, 2})
 	inputField := drawable.NewNumberCards([]int{0, 1, 2}, 50, 30, 30, 0, color.White, color.Black)
 	buttons := []*drawable.Button{
 		drawable.NewNumberButton(0, 30, 30, 30, color.White, color.Black),

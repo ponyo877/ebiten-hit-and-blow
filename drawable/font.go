@@ -1,8 +1,6 @@
 package drawable
 
 import (
-	"os"
-
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/opentype"
 )
@@ -26,11 +24,3 @@ func (f *FontOption) Font() font.Face {
 	})
 	return font
 }
-
-func mplusNormalFont(size int) font.Face {
-	var fontsRoGSanSrfStd, _ = os.ReadFile("./drawable/RoGSanSrfStd-Bd.otf")
-	// return NewFontOption(fonts.MPlus1pRegular_ttf, size, 72, font.HintingVertical).Font()
-	return NewFontOption(fontsRoGSanSrfStd, size, 72, font.HintingVertical).Font()
-}
-
-// var fontsRoGSanSrfStd, _ = os.ReadFile("RoGSanSrfStd-Bd.otf")
