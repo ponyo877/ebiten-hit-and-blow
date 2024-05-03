@@ -21,8 +21,8 @@ func NewHistoryBoard(mh, eh *History, w, h int, bgc color.Color) *HistoryBoard {
 
 func (hb *HistoryBoard) Draw(screen *ebiten.Image, x, y int) {
 	hb.base.Fill()
-	hb.myHistory.Draw(hb.base.Image(), 0, 0)
-	hb.emHistory.Draw(hb.base.Image(), hb.w/2, 0)
+	hb.myHistory.Draw(hb.base.Image(), 0+5, 0)
+	hb.emHistory.Draw(hb.base.Image(), hb.w/2+5, 0)
 
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(float64(x), float64(y))

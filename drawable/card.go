@@ -13,15 +13,17 @@ type Card struct {
 	txtSize int
 	// base    *Rect
 	bgColor color.Color
-	base    *ebiten.Image
+	base    *Rect
+	baseV   *ebiten.Image
 	text    *Text
 }
 
 func NewCard(n string, w, h, ts int, bgc, txc color.Color) *Card {
-	// base := NewRect(w, h, bgc)
-	base := ebiten.NewImage(w, h)
+	base := NewRect(w, h, bgc)
+	baseV := ebiten.NewImage(w, h)
+	// whiteSubImage := base.SubImage(image.Rect(1, 1, 2, 2)).(*ebiten.Image)
 	text := NewText(n, ts, txc)
-	return &Card{w, h, ts, bgc, base, text}
+	return &Card{w, h, ts, bgc, base, baseV, text}
 }
 
 func NewNumberCard(n, w, h, t int, bgc, txtc color.Color) *Card {
@@ -37,7 +39,7 @@ func (c *Card) Draw(screen *ebiten.Image, x, y int) {
 	// c.text.Draw(c.base.Image(), 0, 0)
 	// c.base.Draw(screen, x, y)
 
-	wf, hf, xf, yf, rf := float32(c.w), float32(c.h), float32(x), float32(y), float32(5)
+	wf, hf, xf, yf, rf := float32(c.w), float32(c.h), float32(0), float32(0), float32(5)
 	var path vector.Path
 	path.MoveTo(xf, yf)
 	path.ArcTo(xf+wf, yf, xf+wf, yf+hf/2, rf)
@@ -50,7 +52,8 @@ func (c *Card) Draw(screen *ebiten.Image, x, y int) {
 	op := &ebiten.DrawTrianglesOptions{}
 	op.AntiAlias = true
 	op.FillRule = ebiten.NonZero
-	c.base.Fill(c.bgColor)
-	c.text.Draw(c.base, 0, 0)
-	screen.DrawTriangles(vs, is, c.base, op)
+	c.baseV.Fill(c.bgColor)
+	c.base.Image().DrawTriangles(vs, is, c.baseV, op)
+	c.text.Draw(c.base.Image(), 0, 0)
+	c.base.Draw(screen, x, y)
 }

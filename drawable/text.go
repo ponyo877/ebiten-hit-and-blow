@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"image/color"
 	"log"
+	"os"
 
 	"github.com/hajimehoshi/ebiten/examples/resources/fonts"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -46,9 +47,9 @@ func (t *Text) Draw(screen *ebiten.Image, x, y int) {
 	textOp.PrimaryAlign = text.AlignCenter
 	textOp.SecondaryAlign = text.AlignCenter
 	textOp.Filter = ebiten.FilterLinear
-	// fontsRoGSanSrfStd, _ := os.ReadFile("./drawable/RoGSanSrfStd-Bd.otf")
-	// s, err := text.NewGoTextFaceSource(bytes.NewReader(fontsRoGSanSrfStd))
-	source, err := text.NewGoTextFaceSource(bytes.NewReader(fonts.MPlus1pRegular_ttf))
+	fontsRoGSanSrfStd, _ := os.ReadFile("./drawable/RoGSanSrfStd-Bd.otf")
+	source, err := text.NewGoTextFaceSource(bytes.NewReader(fontsRoGSanSrfStd))
+	// source, err := text.NewGoTextFaceSource(bytes.NewReader(fonts.MPlus1pRegular_ttf))
 	if err != nil {
 		log.Fatal(err)
 	}
