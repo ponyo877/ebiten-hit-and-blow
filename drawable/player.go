@@ -30,8 +30,8 @@ func NewPlayer(w, h, t int, i *Icon, n string, r int, bgc, txc color.Color) *Pla
 func (p *Player) Draw(screen *ebiten.Image, x, y int) {
 	p.icon.Draw(p.base.Image(), 0, 0)
 	iw, _ := p.icon.Bounds()
-	p.name.Draw(p.base.Image(), iw, 0)
-	p.rate.Draw(p.base.Image(), iw, p.txtSize+margin)
+	p.name.Draw(p.base.Image(), iw, -p.txtSize+margin)
+	p.rate.Draw(p.base.Image(), iw, 2*margin)
 
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(float64(x), float64(y))

@@ -39,7 +39,7 @@ func (c *Card) Draw(screen *ebiten.Image, x, y int) {
 	// c.text.Draw(c.base.Image(), 0, 0)
 	// c.base.Draw(screen, x, y)
 
-	wf, hf, xf, yf, rf := float32(c.w), float32(c.h), float32(0), float32(0), float32(5)
+	wf, hf, xf, yf, rf := float32(c.w), float32(c.h), float32(0), float32(0), float32(10)
 	var path vector.Path
 	path.MoveTo(xf, yf)
 	path.ArcTo(xf+wf, yf, xf+wf, yf+hf/2, rf)

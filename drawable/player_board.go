@@ -9,14 +9,14 @@ import (
 type PlayerBoard struct {
 	myPlayer *Player
 	emPlayer *Player
-	myHand   *Cards
-	emHand   *Cards
+	myHand   *Hand
+	emHand   *Hand
 	w, h     int
 	myBase   *Rect
 	emBase   *Rect
 }
 
-func NewPlayerBoard(mp, ep *Player, mh, eh *Cards, w, h int, mybgc, embgc color.Color) *PlayerBoard {
+func NewPlayerBoard(mp, ep *Player, mh, eh *Hand, w, h int, mybgc, embgc color.Color) *PlayerBoard {
 	myBase := NewRect(w/2, h, mybgc)
 	emBase := NewRect(w/2, h, embgc)
 	return &PlayerBoard{mp, ep, mh, eh, w, h, myBase, emBase}
@@ -25,11 +25,13 @@ func NewPlayerBoard(mp, ep *Player, mh, eh *Cards, w, h int, mybgc, embgc color.
 func (pb *PlayerBoard) Draw(screen *ebiten.Image, x, y int) {
 	pb.myBase.Fill()
 	pb.myPlayer.Draw(pb.myBase.Image(), 0, 0)
-	pb.myHand.Draw(pb.myBase.Image(), 0, pb.myPlayer.h)
+	w, _ := pb.myHand.Bounds()
+	pb.myHand.Draw(pb.myBase.Image(), pb.w/4-w/2, pb.myPlayer.h+20)
 
 	pb.emBase.Fill()
 	pb.emPlayer.Draw(pb.emBase.Image(), 0, 0)
-	pb.emHand.Draw(pb.emBase.Image(), 0, pb.emPlayer.h)
+	w, _ = pb.emHand.Bounds()
+	pb.emHand.Draw(pb.emBase.Image(), pb.w/4-w/2, pb.emPlayer.h+20)
 
 	myOp := &ebiten.DrawImageOptions{}
 	myOp.GeoM.Translate(float64(x), float64(y))

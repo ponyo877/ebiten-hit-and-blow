@@ -33,7 +33,8 @@ func NewEmptyCards(w, h, ts, m int, bgc, txc color.Color) *Cards {
 }
 
 func (cs *Cards) Bounds() (int, int) {
-	return cs.w * len(cs.cards), cs.h
+	cnt := len(cs.cards)
+	return cs.w*cnt + cs.margin*(cnt-1), cs.h
 }
 
 func (cs *Cards) Draw(screen *ebiten.Image, x, y int) {
