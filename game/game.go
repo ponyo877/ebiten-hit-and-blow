@@ -19,7 +19,21 @@ type Game struct {
 	timer        *drawable.Timer
 }
 
-func (g *Game) init() {
+func NewGame() *Game {
+	return &Game{}
+}
+
+func (g *Game) Start() error {
+	w, h := g.Layout(375, 667)
+	ebiten.SetWindowSize(w, h)
+	return ebiten.RunGame(g)
+}
+
+func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
+	return outsideWidth, outsideHeight
+}
+
+func (g *Game) Update() error {
 	w, h := g.Layout(375, 667)
 	name := "NoName"
 	rate := 1500
@@ -72,30 +86,13 @@ func (g *Game) init() {
 	}
 	tenkey := drawable.NewTenkey(buttons, w*12/750, h*16/1334)
 	g.inputBoard = drawable.NewInputBoard(w, h*3/10, "相手は考えています...", inputField, tenkey, drawable.HistoryFrameColor, drawable.MessageColor)
-}
-
-func NewGame() *Game {
-	return &Game{}
-}
-
-func (g *Game) Start() error {
-	w, h := g.Layout(375, 667)
-	ebiten.SetWindowSize(w, h)
-	return ebiten.RunGame(g)
-}
-
-func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
-	return outsideWidth, outsideHeight
-}
-
-func (g *Game) Update() error {
 	return nil
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{0x00, 0x00, 0x80, 0x80})
 	if g.inputBoard == nil {
-		g.init()
+		g.Update()
 	}
 	_, h := g.Layout(375, 667)
 	g.playerBoard.Draw(screen, 0, 0)

@@ -23,5 +23,6 @@ func (i *Icon) Draw(screen *ebiten.Image, x, y int) {
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Scale(float64(i.w)/float64(i.image.Bounds().Dx()), float64(i.h)/float64(i.image.Bounds().Dy()))
 	op.GeoM.Translate(float64(x), float64(y))
+	op.Filter = ebiten.FilterLinear
 	screen.DrawImage(ebiten.NewImageFromImage(i.image), op)
 }
