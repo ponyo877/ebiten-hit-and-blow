@@ -11,7 +11,6 @@ import (
 type Timer struct {
 	time    int
 	r       int
-	txtSize int
 	bgColor color.Color
 	base    *Rect
 	text    *Text
@@ -20,7 +19,7 @@ type Timer struct {
 func NewTimer(t, r, ts int, bgc, tc color.Color) *Timer {
 	base := NewRect(2*r, 2*r, bgc)
 	text := NewText(fmt.Sprint(t), ts, tc)
-	return &Timer{t, r, ts, bgc, base, text}
+	return &Timer{t, r, bgc, base, text}
 }
 
 func (t *Timer) Draw(screen *ebiten.Image, x, y int) {

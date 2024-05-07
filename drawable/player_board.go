@@ -26,12 +26,12 @@ func (pb *PlayerBoard) Draw(screen *ebiten.Image, x, y int) {
 	pb.myBase.Fill()
 	pb.myPlayer.Draw(pb.myBase.Image(), 0, 0)
 	w, _ := pb.myHand.Bounds()
-	pb.myHand.Draw(pb.myBase.Image(), pb.w/4-w/2, pb.myPlayer.h+20)
+	pb.myHand.Draw(pb.myBase.Image(), pb.w/4-w/2, pb.myPlayer.h+pb.h*20/133)
 
 	pb.emBase.Fill()
 	pb.emPlayer.Draw(pb.emBase.Image(), 0, 0)
 	w, _ = pb.emHand.Bounds()
-	pb.emHand.Draw(pb.emBase.Image(), pb.w/4-w/2, pb.emPlayer.h+20)
+	pb.emHand.Draw(pb.emBase.Image(), pb.w/4-w/2, pb.emPlayer.h+pb.h*20/133)
 
 	myOp := &ebiten.DrawImageOptions{}
 	myOp.GeoM.Translate(float64(x), float64(y))

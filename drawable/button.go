@@ -14,10 +14,6 @@ func NewNumberButton(n, w, h, ts int, bgc, txtc color.Color) *Button {
 	return &Button{NewNumberCard(n, w, h, ts, bgc, txtc)}
 }
 
-func NewButton(t string, w, h, ts int, bgc, txtc color.Color) *Button {
-	return &Button{NewCard(t, w, h, ts, bgc, txtc)}
-}
-
 func (b *Button) Bounds() (int, int) {
 	return b.card.Bounds()
 }

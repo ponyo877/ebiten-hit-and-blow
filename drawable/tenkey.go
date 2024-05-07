@@ -19,13 +19,13 @@ func (t *Tenkey) Bounds() (int, int) {
 }
 
 func (t *Tenkey) Draw(screen *ebiten.Image, x, y int) {
+	turn := len(t.buttons) / 2
 	for i, b := range t.buttons {
 		w, h := b.Bounds()
-		if i < 5 {
+		if i < turn {
 			b.Draw(screen, x+i*(w+t.wmargin), y)
 			continue
 		}
-		si := i - 5
-		b.Draw(screen, x+si*(w+t.wmargin), y+t.hmargin+h)
+		b.Draw(screen, x+(i-turn)*(w+t.wmargin), y+t.hmargin+h)
 	}
 }

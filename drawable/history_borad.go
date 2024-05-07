@@ -6,6 +6,10 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
+var (
+	margin = 5
+)
+
 type HistoryBoard struct {
 	myHistory *History
 	emHistory *History
@@ -21,8 +25,8 @@ func NewHistoryBoard(mh, eh *History, w, h int, bgc color.Color) *HistoryBoard {
 
 func (hb *HistoryBoard) Draw(screen *ebiten.Image, x, y int) {
 	hb.base.Fill()
-	hb.myHistory.Draw(hb.base.Image(), 0+5, 5)
-	hb.emHistory.Draw(hb.base.Image(), hb.w/2+5, 5)
+	hb.myHistory.Draw(hb.base.Image(), margin, margin)
+	hb.emHistory.Draw(hb.base.Image(), hb.w/2+margin, margin)
 
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(float64(x), float64(y))

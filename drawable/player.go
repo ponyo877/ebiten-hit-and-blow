@@ -7,10 +7,6 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
-var (
-	margin = 5
-)
-
 type Player struct {
 	w, h    int
 	txtSize int
@@ -30,6 +26,7 @@ func NewPlayer(w, h, t int, i *Icon, n string, r int, bgc, txc color.Color) *Pla
 func (p *Player) Draw(screen *ebiten.Image, x, y int) {
 	p.icon.Draw(p.base.Image(), 0, 0)
 	iw, _ := p.icon.Bounds()
+	margin := p.h / 9
 	p.name.Draw(p.base.Image(), iw, -p.txtSize+margin)
 	p.rate.Draw(p.base.Image(), iw, 2*margin)
 

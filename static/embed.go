@@ -7,4 +7,6 @@ import (
 var (
 	//go:embed profile.png
 	Profile []byte
+	//go:embed number_font.otf
+	NumberFont []byte
 )

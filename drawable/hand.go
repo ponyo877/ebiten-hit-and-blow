@@ -10,17 +10,15 @@ type Hand struct {
 	w, h            int
 	txtSize, margin int
 	Hand            []*Card
-	bg              []*Card
+	frameColor      color.Color
 }
 
-func NewNumberHand(ns []int, w, h, ts, m int, bgc, txc color.Color) *Hand {
+func NewNumberHand(ns []int, w, h, ts, m int, bgc, txc, frc color.Color) *Hand {
 	cs := make([]*Card, len(ns))
-	bg := make([]*Card, len(ns))
 	for i, n := range ns {
 		cs[i] = NewNumberCard(n, w, h, ts, bgc, txc)
-		bg[i] = NewCard("", w+6, h+6, ts, HistoryBackgroundColor, txc)
 	}
-	return &Hand{w, h, ts, m, cs, bg}
+	return &Hand{w, h, ts, m, cs, frc}
 }
 
 func (cs *Hand) Bounds() (int, int) {
@@ -29,8 +27,9 @@ func (cs *Hand) Bounds() (int, int) {
 }
 
 func (cs *Hand) Draw(screen *ebiten.Image, x, y int) {
+	fsize := cs.h * 3 / 50
 	for i, c := range cs.Hand {
-		cs.bg[i].Draw(screen, x+i*(cs.w+cs.margin)-3, y-3)
+		NewRounded(cs.w+2*fsize, cs.h+2*fsize, cs.frameColor).Draw(screen, x+i*(cs.w+cs.margin)-fsize, y-fsize)
 		c.Draw(screen, x+i*(cs.w+cs.margin), y)
 	}
 }
