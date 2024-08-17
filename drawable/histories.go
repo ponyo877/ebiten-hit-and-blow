@@ -6,7 +6,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
-var maxCount = 10
+var maxCount = 9
 
 type History struct {
 	feedbacks    []*Feedback

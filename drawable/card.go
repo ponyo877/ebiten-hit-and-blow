@@ -29,6 +29,10 @@ func (c *Card) Bounds() (int, int) {
 	return c.w, c.h
 }
 
+func (c *Card) Text() string {
+	return c.text.Text()
+}
+
 func (c *Card) Draw(screen *ebiten.Image, x, y int) {
 	c.rounded.Draw(c.base.Image(), 0, 0)
 	c.text.Draw(c.base.Image(), 0, 0)

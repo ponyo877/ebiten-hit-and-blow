@@ -31,6 +31,10 @@ func (t *Text) Bounds() (int, int) {
 	return int(w), int(h)
 }
 
+func (t *Text) Text() string {
+	return t.text
+}
+
 func (t *Text) SetText(text string) {
 	t.text = text
 }
