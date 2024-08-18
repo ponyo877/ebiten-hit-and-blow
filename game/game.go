@@ -9,11 +9,23 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
+	"github.com/ponyo877/ebiten-hit-and-blow/conn"
 	"github.com/ponyo877/ebiten-hit-and-blow/drawable"
+	"github.com/ponyo877/ebiten-hit-and-blow/entity"
 	"github.com/ponyo877/ebiten-hit-and-blow/static"
 )
 
+type Mode int
+
+const (
+	ModeInit Mode = iota
+	ModeWaiting
+	ModePlaying
+	ModeFinished
+)
+
 type Game struct {
+	ch            chan *entity.Guess
 	playerBoard   *drawable.PlayerBoard
 	historyBoard  *drawable.HistoryBoard
 	inputBoard    *drawable.InputBoard
@@ -22,7 +34,8 @@ type Game struct {
 	tenkey        *drawable.Tenkey
 	enterKey      *drawable.EffectButton
 	deleteKey     *drawable.EffectButton
-	numberButtons []*drawable.Button
+	numberButtons []*drawable.NumberButton
+	searchButton  *drawable.EffectButton
 	tmp           *ebiten.Image
 	changeInput   bool
 	changeTimer   bool
@@ -35,6 +48,7 @@ func NewGame() *Game {
 func (g *Game) Start() error {
 	ebiten.SetWindowSize(screenWidth, screenHeight)
 	g.changeInput = true
+	g.ch = make(chan *entity.Guess)
 	return ebiten.RunGame(g)
 }
 
@@ -43,12 +57,11 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeigh
 }
 
 func (g *Game) Update() error {
+	w, h := screenWidth, screenHeight
+	name := "NoName"
+	rate := 1500
+	reader := bytes.NewReader(static.Profile)
 	if g.tmp == nil {
-		w, h := screenWidth, screenHeight
-		name := "NoName"
-		rate := 1500
-		reader := bytes.NewReader(static.Profile)
-
 		img, _, _ := image.Decode(reader)
 		icon := drawable.NewIcon(w*90/750, w*90/750, img)
 		myPlayer := drawable.NewPlayer(w/2, h*90/1334, h*30/1334, icon, name, rate, drawable.TransColor, color.White)
@@ -79,10 +92,23 @@ func (g *Game) Update() error {
 		}
 		emHistory := drawable.NewHistory(feedback, w*350/750, h*55/1334, "相手の推理", drawable.HistoryFrameColor, color.White)
 		g.historyBoard = drawable.NewHistoryBoard(myHistory, emHistory, w, h*5/10, drawable.HistoryBackgroundColor)
-		g.timer = drawable.NewTimer(w*60/750, w*60/750, w*60/750, color.White, drawable.HistoryFrameColor)
 
+	}
+	switch ModeInit {
+	case ModeInit:
+		g.searchButton = drawable.NewEffectButton("対戦相手を探す", w*600/750, h*90/1334, h*80/1334, drawable.GrayColor, color.White, w*110/750, h*25/40+(h*3/10)*19/40+h*180/1334, g.inputField)
+		// ボタンのクリック判定
+		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+			if g.searchButton.In(ebiten.CursorPosition()) {
+				conn.Matching(g.ch)
+			}
+		}
+	case ModeWaiting:
+
+	case ModePlaying:
+		g.timer = drawable.NewTimer(w*60/750, w*60/750, w*60/750, color.White, drawable.HistoryFrameColor)
 		g.inputField = drawable.NewInput([]string{}, w*75/750, h*100/1334, h*100/1334, w*30/375, drawable.HistoryFrameColor, drawable.MessageColor)
-		g.numberButtons = []*drawable.Button{
+		g.numberButtons = []*drawable.NumberButton{
 			drawable.NewNumberButton(0, w*110/750, h*90/1334, h*80/1334, drawable.GrayColor, color.White, g.inputField),
 			drawable.NewNumberButton(1, w*110/750, h*90/1334, h*80/1334, drawable.GrayColor, color.White, g.inputField),
 			drawable.NewNumberButton(2, w*110/750, h*90/1334, h*80/1334, drawable.GrayColor, color.White, g.inputField),
@@ -100,26 +126,29 @@ func (g *Game) Update() error {
 		g.enterKey = drawable.NewEffectButton("決定", w*330/750, h*90/1334, h*80/1334, drawable.GrayColor, color.White, w*110/750+wmargin, h*25/40+(h*3/10)*19/40+h*180/1334+2*hmargin, g.inputField)
 		g.deleteKey = drawable.NewEffectButton("←", w*110/750, h*90/1334, h*80/1334, drawable.GrayColor, color.White, w*440/750+3*wmargin, h*25/40+(h*3/10)*19/40+h*180/1334+2*hmargin, g.inputField)
 		g.inputBoard = drawable.NewInputBoard(w, h*4/10, h*30/1334, "相手は考えています...", g.inputField, drawable.HistoryFrameColor, drawable.MessageColor)
+		// ボタンのクリック判定
+		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+			pushedButton := g.tenkey.WhichButtonByPosition(ebiten.CursorPosition())
+			if pushedButton != nil {
+				pushedButton.Push()
+				g.changeInput = true
+			}
+			if g.enterKey.In(ebiten.CursorPosition()) {
+				g.enterKey.Send(func(ns []int) {
+					// ここで入力された数字を送信する処理
+					conn.Send(g.ch, ns)
+				})
+				g.changeInput = true
+			}
+			if g.deleteKey.In(ebiten.CursorPosition()) {
+				g.deleteKey.Clear()
+				g.changeInput = true
+			}
+		}
+	case ModeFinished:
+
 	}
 
-	// ボタンのクリック判定
-	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-		pushedButton := g.tenkey.WhichButtonByPosition(ebiten.CursorPosition())
-		if pushedButton != nil {
-			pushedButton.Push()
-			g.changeInput = true
-		}
-		if g.enterKey.In(ebiten.CursorPosition()) {
-			g.enterKey.Send(func(ns []int) {
-				// ここで入力された数字を送信する処理
-			})
-			g.changeInput = true
-		}
-		if g.deleteKey.In(ebiten.CursorPosition()) {
-			g.deleteKey.Clear()
-			g.changeInput = true
-		}
-	}
 	return nil
 }
 
@@ -129,23 +158,35 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		g.tmp.Fill(drawable.TransColor)
 		g.playerBoard.Draw(g.tmp, 0, 0)
 		g.historyBoard.Draw(g.tmp, 0, screenHeight*2/10)
-		g.inputBoard.Draw(g.tmp, 0, screenHeight*25/40)
-		g.timer.Draw(g.tmp, 0, screenHeight*25/40)
+		// g.inputBoard.Draw(g.tmp, 0, screenHeight*25/40)
+		// g.timer.Draw(g.tmp, 0, screenHeight*25/40)
 	}
-	if g.changeInput {
-		g.inputBoard.Draw(g.tmp, 0, screenHeight*25/40)
-		g.changeInput = false
-	}
+	// if g.changeInput {
+	// 	g.inputBoard.Draw(g.tmp, 0, screenHeight*25/40)
+	// 	g.changeInput = false
+	// }
 	// delete not
-	if !g.changeTimer {
-		g.timer.Draw(g.tmp, 0, screenHeight*25/40)
-	}
+	// if !g.changeTimer {
+	// 	g.timer.Draw(g.tmp, 0, screenHeight*25/40)
+	// }
 	ocOp := &ebiten.DrawImageOptions{}
 	ocOp.GeoM.Translate(0, 0)
 	screen.DrawImage(g.tmp, ocOp)
 
 	// インタラクションな描画
-	g.tenkey.Draw(screen)
-	g.enterKey.Draw(screen)
-	g.deleteKey.Draw(screen)
+	switch ModeInit {
+	case ModeInit:
+		g.searchButton.Draw(screen)
+	default:
+		if g.changeInput {
+			g.inputBoard.Draw(g.tmp, 0, screenHeight*25/40)
+			g.changeInput = false
+		}
+		if !g.changeTimer {
+			g.timer.Draw(g.tmp, 0, screenHeight*25/40)
+		}
+		g.tenkey.Draw(screen)
+		g.enterKey.Draw(screen)
+		g.deleteKey.Draw(screen)
+	}
 }

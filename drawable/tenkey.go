@@ -3,14 +3,14 @@ package drawable
 import "github.com/hajimehoshi/ebiten/v2"
 
 type Tenkey struct {
-	buttons    []*Button
+	buttons    []*NumberButton
 	wmargin    int
 	hmargin    int
 	wholeWidth int
 	y          int
 }
 
-func NewTenkey(bs []*Button, wm, hm int, w, y int) *Tenkey {
+func NewTenkey(bs []*NumberButton, wm, hm int, w, y int) *Tenkey {
 	return &Tenkey{bs, wm, hm, w, y}
 }
 
@@ -20,7 +20,7 @@ func (t *Tenkey) Bounds() (int, int) {
 	return w*cnt + t.wmargin*(cnt-1), 2*h + t.hmargin
 }
 
-func (t *Tenkey) WhichButtonByPosition(x, y int) *Button {
+func (t *Tenkey) WhichButtonByPosition(x, y int) *NumberButton {
 	turn := len(t.buttons) / 2
 	for i, b := range t.buttons {
 		w, h := b.Bounds()

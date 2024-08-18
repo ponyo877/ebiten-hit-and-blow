@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<script src="wasm_exec.js"></script>
+<script>
+    // Polyfill
+    if (!WebAssembly.instantiateStreaming) {
+        WebAssembly.instantiateStreaming = async (resp, importObject) => {
+            const source = await (await resp).arrayBuffer();
+            return await WebAssembly.instantiate(source, importObject);
+        };
+    }
+
+    const go = new Go();
+    WebAssembly.instantiateStreaming(fetch("demo.wasm"), go.importObject).then(result => {
+        go.run(result.instance);
+    });
+</script>
+
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-WF5SZFNH7D"></script>
+<script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+
+    gtag('config', 'G-WF5SZFNH7D');
+</script>
