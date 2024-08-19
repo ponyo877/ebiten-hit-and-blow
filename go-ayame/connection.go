@@ -125,7 +125,7 @@ func (c *Connection) CreateDataChannel(label string, options *webrtc.DataChannel
 		c.dataChannels[label] = dc
 		return dc, nil
 	}
-	return nil, fmt.Errorf("client does not exist")
+	return nil, ErrorClientDoesNotExist
 }
 
 // OnOpen は open イベント発生時のコールバック関数を設定します。

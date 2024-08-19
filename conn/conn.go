@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -63,8 +64,7 @@ type updateRatingResMsg struct {
 	Result   string `json:"result"`
 }
 
-func Matching(ch chan *entity.Guess) {
-	log.Printf("mmURL: %s", matchmakingOrigin)
+func Matching(hch chan *entity.Hand, gch chan *entity.Guess) {
 	mmURL := url.URL{Scheme: wsScheme, Host: matchmakingOrigin, Path: "/matchmaking"}
 	signalingURL := url.URL{Scheme: wsScheme, Host: signalingOrigin, Path: "/signaling"}
 	ratingURL := url.URL{Scheme: httpScheme, Host: ratingOrigin, Path: "/rating"}
@@ -128,19 +128,24 @@ func Matching(ch chan *entity.Guess) {
 			conn.OnOpen(func(metadata *interface{}) {
 				var err error
 				dc, err = conn.CreateDataChannel("matchmaking-hit-and-blow", nil)
-				if err != nil && err != fmt.Errorf("client does not exist") {
+				if errors.Is(err, ayame.ErrorClientDoesNotExist) {
+					return
+				}
+				if err != nil {
 					log.Printf("CreateDataChannel error: %v", err)
 					return
 				}
+
 				log.Printf("CreateDataChannel: label=%s", dc.Label())
-				go func() {
+				go func(ch chan *entity.Hand) {
 					rand.NewSource(time.Now().UnixNano())
 					seed := rand.Int()
 
 					initTurn := entity.NewTurnBySeed(seed)
 					myHand := entity.NewHandBySeed(seed)
-					log.Printf("myHand(opener): %v", myHand)
 					// setHand(true, myHand)
+					ch <- myHand
+					log.Printf("myHand(opener): %v", myHand)
 					board.Start(myHand, initTurn, 1)
 					if board.IsMyTurnInit() {
 						log.Printf("YOU FIRST !!!")
@@ -155,15 +160,15 @@ func Matching(ch chan *entity.Guess) {
 					// setProfile(userID, resMsg.UserID, myRate, opRate)
 					startMsg := Message{Type: "start", Turn: &turn}
 					by, _ := json.Marshal(startMsg)
-					time.Sleep(20 * time.Second)
+					time.Sleep(10 * time.Second)
 					log.Printf("startMsg(opener): %v", string(by))
 					if err := dc.SendText(string(by)); err != nil {
 						log.Printf("failed to send startMsg: %v", err)
 						return
 					}
-				}()
+				}(hch)
 				finChan := make(chan struct{})
-				dc.OnMessage(onMessage(dc, ch, finChan, board))
+				dc.OnMessage(onMessage(dc, hch, gch, finChan, board))
 				go func() {
 					select {
 					case <-finChan:
@@ -194,7 +199,7 @@ func Matching(ch chan *entity.Guess) {
 				// }
 				// setProfile(userID, resMsg.UserID, myRate, opRate)
 				finChan := make(chan struct{})
-				dc.OnMessage(onMessage(dc, ch, finChan, board))
+				dc.OnMessage(onMessage(dc, hch, gch, finChan, board))
 				go func() {
 					select {
 					case <-finChan:
@@ -212,7 +217,6 @@ func Matching(ch chan *entity.Guess) {
 			log.Printf("conn.Connect();")
 			select {
 			case <-connected:
-				log.Printf("connected: %v", connected)
 				return
 			}
 		}
@@ -265,7 +269,7 @@ type Message struct {
 	MyHand string `json:"my_hand,omitempty"`
 }
 
-func onMessage(dc *webrtc.DataChannel, ch chan *entity.Guess, finChan chan struct{}, board *entity.Board) func(webrtc.DataChannelMessage) {
+func onMessage(dc *webrtc.DataChannel, hch chan *entity.Hand, gch chan *entity.Guess, finChan chan struct{}, board *entity.Board) func(webrtc.DataChannelMessage) {
 	return func(msg webrtc.DataChannelMessage) {
 		log.Printf("recieve msg.Data: %s", string(msg.Data))
 		if !msg.IsString {
@@ -286,8 +290,9 @@ func onMessage(dc *webrtc.DataChannel, ch chan *entity.Guess, finChan chan struc
 				rand.NewSource(time.Now().UnixNano())
 				seed := rand.Int()
 				myHand := entity.NewHandBySeed(seed)
+				hch <- myHand
 				log.Printf("myHand(unopener): %v", myHand)
-				setHand(true, myHand)
+				// setHand(true, myHand)
 				board.Start(myHand, initTurn, 2)
 				if board.IsMyTurnInit() {
 					log.Printf("YOU FIRST!!!")
@@ -383,7 +388,7 @@ func onMessage(dc *webrtc.DataChannel, ch chan *entity.Guess, finChan chan struc
 				}
 			}
 		}(timeout, toChan)
-		myGuess, isTO := board.WaitGuess(ch, toChan, time.Duration(timeout+gracePeriod)*time.Second)
+		myGuess, isTO := board.WaitGuess(gch, toChan, time.Duration(timeout+gracePeriod)*time.Second)
 		recentGuess = myGuess
 		if isTO {
 			toMsg := Message{Type: "timeout"}

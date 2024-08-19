@@ -22,6 +22,10 @@ func NewPlayerBoard(mp, ep *Player, mh, eh *Hand, w, h int, mybgc, embgc color.C
 	return &PlayerBoard{mp, ep, mh, eh, w, h, myBase, emBase}
 }
 
+func (pb *PlayerBoard) MyHand() *Hand {
+	return pb.myHand
+}
+
 func (pb *PlayerBoard) Draw(screen *ebiten.Image, x, y int) {
 	pb.myBase.Fill()
 	pb.myPlayer.Draw(pb.myBase.Image(), 0, 0)

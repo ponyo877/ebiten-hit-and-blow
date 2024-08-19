@@ -25,20 +25,22 @@ const (
 )
 
 type Game struct {
-	ch            chan *entity.Guess
-	playerBoard   *drawable.PlayerBoard
-	historyBoard  *drawable.HistoryBoard
-	inputBoard    *drawable.InputBoard
-	timer         *drawable.Timer
-	inputField    *drawable.Input
-	tenkey        *drawable.Tenkey
-	enterKey      *drawable.EffectButton
-	deleteKey     *drawable.EffectButton
-	numberButtons []*drawable.NumberButton
-	searchButton  *drawable.EffectButton
-	tmp           *ebiten.Image
-	changeInput   bool
-	changeTimer   bool
+	hch               chan *entity.Hand
+	gch               chan *entity.Guess
+	playerBoard       *drawable.PlayerBoard
+	historyBoard      *drawable.HistoryBoard
+	inputBoard        *drawable.InputBoard
+	timer             *drawable.Timer
+	inputField        *drawable.Input
+	tenkey            *drawable.Tenkey
+	enterKey          *drawable.EffectButton
+	deleteKey         *drawable.EffectButton
+	numberButtons     []*drawable.NumberButton
+	searchButton      *drawable.EffectButton
+	tmp               *ebiten.Image
+	changePlayerBoard bool
+	changeInput       bool
+	changeTimer       bool
 }
 
 func NewGame() *Game {
@@ -47,8 +49,8 @@ func NewGame() *Game {
 
 func (g *Game) Start() error {
 	ebiten.SetWindowSize(screenWidth, screenHeight)
-	g.changeInput = true
-	g.ch = make(chan *entity.Guess)
+	g.hch = make(chan *entity.Hand)
+	g.gch = make(chan *entity.Guess)
 	return ebiten.RunGame(g)
 }
 
@@ -66,8 +68,8 @@ func (g *Game) Update() error {
 		icon := drawable.NewIcon(w*90/750, w*90/750, img)
 		myPlayer := drawable.NewPlayer(w/2, h*90/1334, h*30/1334, icon, name, rate, drawable.TransColor, color.White)
 		emPlayer := drawable.NewPlayer(w/2, h*90/1334, h*30/1334, icon, name, rate, drawable.TransColor, color.White)
-		myHand := drawable.NewNumberHand([]int{0, 1, 2}, w*45/375, h*120/1334, h*100/1334, w*15/375, color.White, drawable.HistoryFrameColor, drawable.HistoryBackgroundColor)
-		emHand := drawable.NewNumberHand([]int{9, 8, 7}, w*45/375, h*120/1334, h*100/1334, w*15/375, color.White, drawable.HistoryFrameColor, drawable.HistoryBackgroundColor)
+		myHand := drawable.NewHand([]string{"?", "?", "?"}, w*45/375, h*120/1334, h*100/1334, w*15/375, color.White, drawable.HistoryFrameColor, drawable.HistoryBackgroundColor)
+		emHand := drawable.NewHand([]string{"?", "?", "?"}, w*45/375, h*120/1334, h*100/1334, w*15/375, color.White, drawable.HistoryFrameColor, drawable.HistoryBackgroundColor)
 		g.playerBoard = drawable.NewPlayerBoard(myPlayer, emPlayer, myHand, emHand, w, h*2/10, drawable.MyPlayerColor, drawable.EnemyPlayerColor)
 		es := []*drawable.Cards{
 			drawable.NewNumberCards([]int{1, 2, 3}, w*30/750, h*40/1334, h*40/1334, w*5/375, drawable.TransColor, drawable.HistoryFrameColor),
@@ -92,17 +94,25 @@ func (g *Game) Update() error {
 		}
 		emHistory := drawable.NewHistory(feedback, w*350/750, h*55/1334, "相手の推理", drawable.HistoryFrameColor, color.White)
 		g.historyBoard = drawable.NewHistoryBoard(myHistory, emHistory, w, h*5/10, drawable.HistoryBackgroundColor)
-
+		go func(ch chan *entity.Hand) {
+			select {
+			case h := <-ch:
+				g.playerBoard.MyHand().SetHand(h)
+				g.changePlayerBoard = true
+			}
+		}(g.hch)
 	}
+
 	switch ModeInit {
 	case ModeInit:
 		g.searchButton = drawable.NewEffectButton("対戦相手を探す", w*600/750, h*90/1334, h*80/1334, drawable.GrayColor, color.White, w*110/750, h*25/40+(h*3/10)*19/40+h*180/1334, g.inputField)
 		// ボタンのクリック判定
 		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 			if g.searchButton.In(ebiten.CursorPosition()) {
-				conn.Matching(g.ch)
+				go conn.Matching(g.hch, g.gch)
 			}
 		}
+
 	case ModeWaiting:
 
 	case ModePlaying:
@@ -136,7 +146,7 @@ func (g *Game) Update() error {
 			if g.enterKey.In(ebiten.CursorPosition()) {
 				g.enterKey.Send(func(ns []int) {
 					// ここで入力された数字を送信する処理
-					conn.Send(g.ch, ns)
+					go conn.Send(g.gch, ns)
 				})
 				g.changeInput = true
 			}
@@ -158,25 +168,15 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		g.tmp.Fill(drawable.TransColor)
 		g.playerBoard.Draw(g.tmp, 0, 0)
 		g.historyBoard.Draw(g.tmp, 0, screenHeight*2/10)
-		// g.inputBoard.Draw(g.tmp, 0, screenHeight*25/40)
-		// g.timer.Draw(g.tmp, 0, screenHeight*25/40)
 	}
-	// if g.changeInput {
-	// 	g.inputBoard.Draw(g.tmp, 0, screenHeight*25/40)
-	// 	g.changeInput = false
-	// }
-	// delete not
-	// if !g.changeTimer {
-	// 	g.timer.Draw(g.tmp, 0, screenHeight*25/40)
-	// }
-	ocOp := &ebiten.DrawImageOptions{}
-	ocOp.GeoM.Translate(0, 0)
-	screen.DrawImage(g.tmp, ocOp)
-
 	// インタラクションな描画
 	switch ModeInit {
 	case ModeInit:
-		g.searchButton.Draw(screen)
+		g.searchButton.Draw(g.tmp)
+		if g.changePlayerBoard {
+			g.playerBoard.Draw(g.tmp, 0, 0)
+			g.changePlayerBoard = false
+		}
 	default:
 		if g.changeInput {
 			g.inputBoard.Draw(g.tmp, 0, screenHeight*25/40)
@@ -189,4 +189,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		g.enterKey.Draw(screen)
 		g.deleteKey.Draw(screen)
 	}
+	ocOp := &ebiten.DrawImageOptions{}
+	ocOp.GeoM.Translate(0, 0)
+	screen.DrawImage(g.tmp, ocOp)
 }

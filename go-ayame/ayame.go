@@ -2,8 +2,6 @@
 package ayame
 
 import (
-	"log"
-
 	"github.com/pion/webrtc/v3"
 )
 
@@ -15,7 +13,6 @@ var (
 
 // DefaultOptions は Ayame 接続オプションのデフォルト値を生成して返します。
 func DefaultOptions() *ConnectionOptions {
-	log.Printf("DefaultOptions: %s, %s, %s", turnHost, turnUser, turnPass)
 	return &ConnectionOptions{
 		ICEServers: []webrtc.ICEServer{
 			// 本番環境では TURN サーバを指定した方が良さそうです
