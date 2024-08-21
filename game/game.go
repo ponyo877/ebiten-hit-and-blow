@@ -25,6 +25,8 @@ const (
 )
 
 type Game struct {
+	mode              Mode
+	cch               chan struct{}
 	hch               chan *entity.Hand
 	gch               chan *entity.Guess
 	playerBoard       *drawable.PlayerBoard
@@ -41,6 +43,7 @@ type Game struct {
 	changePlayerBoard bool
 	changeInput       bool
 	changeTimer       bool
+	changeMode        bool
 }
 
 func NewGame() *Game {
@@ -49,6 +52,8 @@ func NewGame() *Game {
 
 func (g *Game) Start() error {
 	ebiten.SetWindowSize(screenWidth, screenHeight)
+	g.mode = ModeInit
+	g.cch = make(chan struct{})
 	g.hch = make(chan *entity.Hand)
 	g.gch = make(chan *entity.Guess)
 	return ebiten.RunGame(g)
@@ -95,21 +100,24 @@ func (g *Game) Update() error {
 		emHistory := drawable.NewHistory(feedback, w*350/750, h*55/1334, "相手の推理", drawable.HistoryFrameColor, color.White)
 		g.historyBoard = drawable.NewHistoryBoard(myHistory, emHistory, w, h*5/10, drawable.HistoryBackgroundColor)
 		go func(ch chan *entity.Hand) {
-			select {
-			case h := <-ch:
-				g.playerBoard.MyHand().SetHand(h)
-				g.changePlayerBoard = true
-			}
+			h := <-ch
+			g.playerBoard.MyHand().SetHand(h)
+			g.changePlayerBoard = true
 		}(g.hch)
 	}
 
-	switch ModeInit {
+	switch g.mode {
 	case ModeInit:
 		g.searchButton = drawable.NewEffectButton("対戦相手を探す", w*600/750, h*90/1334, h*80/1334, drawable.GrayColor, color.White, w*110/750, h*25/40+(h*3/10)*19/40+h*180/1334, g.inputField)
 		// ボタンのクリック判定
 		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 			if g.searchButton.In(ebiten.CursorPosition()) {
-				go conn.Matching(g.hch, g.gch)
+				go conn.Matching(g.cch, g.hch, g.gch)
+				go func(ch chan struct{}) {
+					<-ch
+					g.changeMode = true
+					g.mode = ModePlaying
+				}(g.cch)
 			}
 		}
 
@@ -163,20 +171,21 @@ func (g *Game) Update() error {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-	if g.tmp == nil {
+	if g.tmp == nil || g.changeMode {
 		g.tmp = ebiten.NewImage(screenWidth, screenHeight)
 		g.tmp.Fill(drawable.TransColor)
 		g.playerBoard.Draw(g.tmp, 0, 0)
 		g.historyBoard.Draw(g.tmp, 0, screenHeight*2/10)
+		g.changeMode = false
+	}
+	if g.changePlayerBoard {
+		g.playerBoard.Draw(g.tmp, 0, 0)
+		g.changePlayerBoard = false
 	}
 	// インタラクションな描画
-	switch ModeInit {
+	switch g.mode {
 	case ModeInit:
 		g.searchButton.Draw(g.tmp)
-		if g.changePlayerBoard {
-			g.playerBoard.Draw(g.tmp, 0, 0)
-			g.changePlayerBoard = false
-		}
 	default:
 		if g.changeInput {
 			g.inputBoard.Draw(g.tmp, 0, screenHeight*25/40)

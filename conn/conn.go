@@ -64,7 +64,7 @@ type updateRatingResMsg struct {
 	Result   string `json:"result"`
 }
 
-func Matching(hch chan *entity.Hand, gch chan *entity.Guess) {
+func Matching(cch chan struct{}, hch chan *entity.Hand, gch chan *entity.Guess) {
 	mmURL := url.URL{Scheme: wsScheme, Host: matchmakingOrigin, Path: "/matchmaking"}
 	signalingURL := url.URL{Scheme: wsScheme, Host: signalingOrigin, Path: "/signaling"}
 	ratingURL := url.URL{Scheme: httpScheme, Host: ratingOrigin, Path: "/rating"}
@@ -99,129 +99,240 @@ func Matching(hch chan *entity.Hand, gch chan *entity.Guess) {
 		}
 	}()
 	var conn *ayame.Connection
-	connected := make(chan bool)
+
 	board := entity.NewBoard()
-	go func() {
-		ws, _, err := websocket.Dial(context.Background(), mmURL.String(), nil)
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer ws.Close(websocket.StatusNormalClosure, "close connection")
+	ws, _, err := websocket.Dial(context.Background(), mmURL.String(), nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer ws.Close(websocket.StatusNormalClosure, "close connection")
 
-		if err := ws.Write(context.Background(), websocket.MessageText, reqMsg); err != nil {
+	if err := ws.Write(context.Background(), websocket.MessageText, reqMsg); err != nil {
+		log.Fatal(err)
+	}
+	logElem("[Sys]: Waiting match...\n")
+	for {
+		if err := wsjson.Read(context.Background(), ws, &resMsg); err != nil {
 			log.Fatal(err)
+			break
 		}
-		logElem("[Sys]: Waiting match...\n")
-		for {
-			if err := wsjson.Read(context.Background(), ws, &resMsg); err != nil {
-				log.Fatal(err)
-				break
-			}
-			if resMsg.Type == "MATCH" {
-				break
-			}
-		}
-		ws.Close(websocket.StatusNormalClosure, "close connection")
 		if resMsg.Type == "MATCH" {
+			break
+		}
+	}
+	ws.Close(websocket.StatusNormalClosure, "close connection")
+	if resMsg.Type == "MATCH" {
 
-			conn = ayame.NewConnection(signalingURL.String(), resMsg.RoomID, ayame.DefaultOptions(), false, false)
-			conn.OnOpen(func(metadata *interface{}) {
-				var err error
-				dc, err = conn.CreateDataChannel("matchmaking-hit-and-blow", nil)
-				if errors.Is(err, ayame.ErrorClientDoesNotExist) {
-					return
+		conn = ayame.NewConnection(signalingURL.String(), resMsg.RoomID, ayame.DefaultOptions(), false, false)
+		conn.OnOpen(func(metadata *interface{}) {
+			var err error
+			dc, err = conn.CreateDataChannel("matchmaking-hit-and-blow", nil)
+			if errors.Is(err, ayame.ErrorClientDoesNotExist) {
+				return
+			}
+			if err != nil {
+				log.Printf("CreateDataChannel error: %v", err)
+				return
+			}
+
+			log.Printf("CreateDataChannel: label=%s", dc.Label())
+			go func(ch chan *entity.Hand) {
+				rand.NewSource(time.Now().UnixNano())
+				seed := rand.Int()
+
+				initTurn := entity.NewTurnBySeed(seed)
+				myHand := entity.NewHandBySeed(seed)
+				// setHand(true, myHand)
+				ch <- myHand
+				log.Printf("myHand(opener): %v", myHand)
+				board.Start(myHand, initTurn, 1)
+				if board.IsMyTurnInit() {
+					log.Printf("YOU FIRST !!!")
+					// setTurn("It's Your Turn !")
 				}
-				if err != nil {
-					log.Printf("CreateDataChannel error: %v", err)
-					return
-				}
-
-				log.Printf("CreateDataChannel: label=%s", dc.Label())
-				go func(ch chan *entity.Hand) {
-					rand.NewSource(time.Now().UnixNano())
-					seed := rand.Int()
-
-					initTurn := entity.NewTurnBySeed(seed)
-					myHand := entity.NewHandBySeed(seed)
-					// setHand(true, myHand)
-					ch <- myHand
-					log.Printf("myHand(opener): %v", myHand)
-					board.Start(myHand, initTurn, 1)
-					if board.IsMyTurnInit() {
-						log.Printf("YOU FIRST !!!")
-						// setTurn("It's Your Turn !")
-					}
-					turn := int(initTurn)
-					// myRate, opRate, err := getRating(ratingURL, userID, resMsg.UserID)
-					// if err != nil {
-					// 	log.Printf("failed to get rating: %v", err)
-					// 	return
-					// }
-					// setProfile(userID, resMsg.UserID, myRate, opRate)
-					startMsg := Message{Type: "start", Turn: &turn}
-					by, _ := json.Marshal(startMsg)
-					time.Sleep(10 * time.Second)
-					log.Printf("startMsg(opener): %v", string(by))
-					if err := dc.SendText(string(by)); err != nil {
-						log.Printf("failed to send startMsg: %v", err)
-						return
-					}
-				}(hch)
-				finChan := make(chan struct{})
-				dc.OnMessage(onMessage(dc, hch, gch, finChan, board))
-				go func() {
-					select {
-					case <-finChan:
-						if err := updateRating(ratingURL, resMsg.RoomID, userID, hash, 1, board.Result()); err != nil {
-							log.Printf("failed to update rating: %v", err)
-							return
-						}
-					}
-				}()
-			})
-
-			conn.OnConnect(func() {
-				logElem("[Sys]: Matching! Start P2P chat not via server\n")
-				conn.CloseWebSocketConnection()
-				connected <- true
-			})
-
-			conn.OnDataChannel(func(c *webrtc.DataChannel) {
-				log.Printf("OnDataChannel: label=%s", c.Label())
-				if dc == nil {
-					dc = c
-				}
-				log.Println("ready to recieve")
+				turn := int(initTurn)
 				// myRate, opRate, err := getRating(ratingURL, userID, resMsg.UserID)
 				// if err != nil {
 				// 	log.Printf("failed to get rating: %v", err)
 				// 	return
 				// }
 				// setProfile(userID, resMsg.UserID, myRate, opRate)
-				finChan := make(chan struct{})
-				dc.OnMessage(onMessage(dc, hch, gch, finChan, board))
-				go func() {
-					select {
-					case <-finChan:
-						if err := updateRating(ratingURL, resMsg.RoomID, userID, hash, 2, board.Result()); err != nil {
-							log.Printf("failed to update rating: %v", err)
-							return
-						}
-					}
-				}()
-			})
+				startMsg := Message{Type: "start", Turn: &turn}
+				by, _ := json.Marshal(startMsg)
+				time.Sleep(10 * time.Second)
+				log.Printf("startMsg(opener): %v", string(by))
+				if err := dc.SendText(string(by)); err != nil {
+					log.Printf("failed to send startMsg: %v", err)
+					return
+				}
+			}(hch)
+			finChan := make(chan struct{})
+			dc.OnMessage(onMessage(dc, hch, gch, finChan, board))
+			go func() {
+				<-finChan
+				if err := updateRating(ratingURL, resMsg.RoomID, userID, hash, 1, board.Result()); err != nil {
+					log.Printf("failed to update rating: %v", err)
+					return
+				}
+			}()
+		})
 
-			if err := conn.Connect(); err != nil {
-				log.Fatal("failed to connect Ayame", err)
+		conn.OnConnect(func() {
+			logElem("[Sys]: Matching! Start P2P chat not via server\n")
+			conn.CloseWebSocketConnection()
+			cch <- struct{}{}
+		})
+
+		conn.OnDataChannel(func(c *webrtc.DataChannel) {
+			log.Printf("OnDataChannel: label=%s", c.Label())
+			if dc == nil {
+				dc = c
 			}
-			log.Printf("conn.Connect();")
-			select {
-			case <-connected:
-				return
-			}
+			log.Println("ready to recieve")
+			// myRate, opRate, err := getRating(ratingURL, userID, resMsg.UserID)
+			// if err != nil {
+			// 	log.Printf("failed to get rating: %v", err)
+			// 	return
+			// }
+			// setProfile(userID, resMsg.UserID, myRate, opRate)
+			finChan := make(chan struct{})
+			dc.OnMessage(onMessage(dc, hch, gch, finChan, board))
+			go func() {
+				<-finChan
+				if err := updateRating(ratingURL, resMsg.RoomID, userID, hash, 2, board.Result()); err != nil {
+					log.Printf("failed to update rating: %v", err)
+					return
+				}
+			}()
+		})
+
+		if err := conn.Connect(); err != nil {
+			log.Fatal("failed to connect Ayame", err)
 		}
-	}()
-	select {}
+		log.Printf("conn.Connect();")
+		select {}
+	}
+	// go func() {
+	// 	ws, _, err := websocket.Dial(context.Background(), mmURL.String(), nil)
+	// 	if err != nil {
+	// 		log.Fatal(err)
+	// 	}
+	// 	defer ws.Close(websocket.StatusNormalClosure, "close connection")
+
+	// 	if err := ws.Write(context.Background(), websocket.MessageText, reqMsg); err != nil {
+	// 		log.Fatal(err)
+	// 	}
+	// 	logElem("[Sys]: Waiting match...\n")
+	// 	for {
+	// 		if err := wsjson.Read(context.Background(), ws, &resMsg); err != nil {
+	// 			log.Fatal(err)
+	// 			break
+	// 		}
+	// 		if resMsg.Type == "MATCH" {
+	// 			break
+	// 		}
+	// 	}
+	// 	ws.Close(websocket.StatusNormalClosure, "close connection")
+	// 	if resMsg.Type == "MATCH" {
+
+	// 		conn = ayame.NewConnection(signalingURL.String(), resMsg.RoomID, ayame.DefaultOptions(), false, false)
+	// 		conn.OnOpen(func(metadata *interface{}) {
+	// 			var err error
+	// 			dc, err = conn.CreateDataChannel("matchmaking-hit-and-blow", nil)
+	// 			if errors.Is(err, ayame.ErrorClientDoesNotExist) {
+	// 				return
+	// 			}
+	// 			if err != nil {
+	// 				log.Printf("CreateDataChannel error: %v", err)
+	// 				return
+	// 			}
+
+	// 			log.Printf("CreateDataChannel: label=%s", dc.Label())
+	// 			go func(ch chan *entity.Hand) {
+	// 				rand.NewSource(time.Now().UnixNano())
+	// 				seed := rand.Int()
+
+	// 				initTurn := entity.NewTurnBySeed(seed)
+	// 				myHand := entity.NewHandBySeed(seed)
+	// 				// setHand(true, myHand)
+	// 				ch <- myHand
+	// 				log.Printf("myHand(opener): %v", myHand)
+	// 				board.Start(myHand, initTurn, 1)
+	// 				if board.IsMyTurnInit() {
+	// 					log.Printf("YOU FIRST !!!")
+	// 					// setTurn("It's Your Turn !")
+	// 				}
+	// 				turn := int(initTurn)
+	// 				// myRate, opRate, err := getRating(ratingURL, userID, resMsg.UserID)
+	// 				// if err != nil {
+	// 				// 	log.Printf("failed to get rating: %v", err)
+	// 				// 	return
+	// 				// }
+	// 				// setProfile(userID, resMsg.UserID, myRate, opRate)
+	// 				startMsg := Message{Type: "start", Turn: &turn}
+	// 				by, _ := json.Marshal(startMsg)
+	// 				time.Sleep(10 * time.Second)
+	// 				log.Printf("startMsg(opener): %v", string(by))
+	// 				if err := dc.SendText(string(by)); err != nil {
+	// 					log.Printf("failed to send startMsg: %v", err)
+	// 					return
+	// 				}
+	// 			}(hch)
+	// 			finChan := make(chan struct{})
+	// 			dc.OnMessage(onMessage(dc, hch, gch, finChan, board))
+	// 			go func() {
+	// 				select {
+	// 				case <-finChan:
+	// 					if err := updateRating(ratingURL, resMsg.RoomID, userID, hash, 1, board.Result()); err != nil {
+	// 						log.Printf("failed to update rating: %v", err)
+	// 						return
+	// 					}
+	// 				}
+	// 			}()
+	// 		})
+
+	// 		conn.OnConnect(func() {
+	// 			logElem("[Sys]: Matching! Start P2P chat not via server\n")
+	// 			conn.CloseWebSocketConnection()
+	// 			connected <- true
+	// 		})
+
+	// 		conn.OnDataChannel(func(c *webrtc.DataChannel) {
+	// 			log.Printf("OnDataChannel: label=%s", c.Label())
+	// 			if dc == nil {
+	// 				dc = c
+	// 			}
+	// 			log.Println("ready to recieve")
+	// 			// myRate, opRate, err := getRating(ratingURL, userID, resMsg.UserID)
+	// 			// if err != nil {
+	// 			// 	log.Printf("failed to get rating: %v", err)
+	// 			// 	return
+	// 			// }
+	// 			// setProfile(userID, resMsg.UserID, myRate, opRate)
+	// 			finChan := make(chan struct{})
+	// 			dc.OnMessage(onMessage(dc, hch, gch, finChan, board))
+	// 			go func() {
+	// 				select {
+	// 				case <-finChan:
+	// 					if err := updateRating(ratingURL, resMsg.RoomID, userID, hash, 2, board.Result()); err != nil {
+	// 						log.Printf("failed to update rating: %v", err)
+	// 						return
+	// 					}
+	// 				}
+	// 			}()
+	// 		})
+
+	// 		if err := conn.Connect(); err != nil {
+	// 			log.Fatal("failed to connect Ayame", err)
+	// 		}
+	// 		log.Printf("conn.Connect();")
+	// 		select {
+	// 		case <-connected:
+	// 			return
+	// 		}
+	// 	}
+	// }()
+	// select {}
 
 	// js.Global().Set("SendGuess", js.FuncOf(func(_ js.Value, _ []js.Value) interface{} {
 	// 	go func() {
