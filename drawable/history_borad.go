@@ -23,6 +23,14 @@ func NewHistoryBoard(mh, eh *History, w, h int, bgc color.Color) *HistoryBoard {
 	return &HistoryBoard{mh, eh, w, h, bgc, rect}
 }
 
+func (hb *HistoryBoard) MyHistory() *History {
+	return hb.myHistory
+}
+
+func (hb *HistoryBoard) EmHistory() *History {
+	return hb.emHistory
+}
+
 func (hb *HistoryBoard) Draw(screen *ebiten.Image, x, y int) {
 	hb.base.Fill()
 	hb.myHistory.Draw(hb.base.Image(), margin, margin)

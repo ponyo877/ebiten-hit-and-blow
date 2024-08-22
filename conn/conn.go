@@ -64,7 +64,7 @@ type updateRatingResMsg struct {
 	Result   string `json:"result"`
 }
 
-func Matching(cch chan struct{}, hch chan *entity.Hand, gch chan *entity.Guess) {
+func Matching(cch chan struct{}, hch chan *entity.Hand, gch chan *entity.Guess, qch chan *entity.QA, tch chan bool) {
 	mmURL := url.URL{Scheme: wsScheme, Host: matchmakingOrigin, Path: "/matchmaking"}
 	signalingURL := url.URL{Scheme: wsScheme, Host: signalingOrigin, Path: "/signaling"}
 	ratingURL := url.URL{Scheme: httpScheme, Host: ratingOrigin, Path: "/rating"}
@@ -136,14 +136,16 @@ func Matching(cch chan struct{}, hch chan *entity.Hand, gch chan *entity.Guess) 
 			}
 
 			log.Printf("CreateDataChannel: label=%s", dc.Label())
-			go func(ch chan *entity.Hand) {
+			go func(hc chan *entity.Hand, cc chan struct{}, tc chan bool) {
 				rand.NewSource(time.Now().UnixNano())
 				seed := rand.Int()
 
 				initTurn := entity.NewTurnBySeed(seed)
 				myHand := entity.NewHandBySeed(seed)
 				// setHand(true, myHand)
-				ch <- myHand
+				hc <- myHand
+				log.Println("initTurn.IsMyTurn(): ", initTurn.IsMyTurn())
+				tc <- initTurn.IsMyTurn()
 				log.Printf("myHand(opener): %v", myHand)
 				board.Start(myHand, initTurn, 1)
 				if board.IsMyTurnInit() {
@@ -159,15 +161,16 @@ func Matching(cch chan struct{}, hch chan *entity.Hand, gch chan *entity.Guess) 
 				// setProfile(userID, resMsg.UserID, myRate, opRate)
 				startMsg := Message{Type: "start", Turn: &turn}
 				by, _ := json.Marshal(startMsg)
-				time.Sleep(10 * time.Second)
+				<-cc
+				time.Sleep(2 * time.Second)
 				log.Printf("startMsg(opener): %v", string(by))
 				if err := dc.SendText(string(by)); err != nil {
 					log.Printf("failed to send startMsg: %v", err)
 					return
 				}
-			}(hch)
+			}(hch, cch, tch)
 			finChan := make(chan struct{})
-			dc.OnMessage(onMessage(dc, hch, gch, finChan, board))
+			dc.OnMessage(onMessage(dc, hch, gch, qch, tch, finChan, board))
 			go func() {
 				<-finChan
 				if err := updateRating(ratingURL, resMsg.RoomID, userID, hash, 1, board.Result()); err != nil {
@@ -179,8 +182,9 @@ func Matching(cch chan struct{}, hch chan *entity.Hand, gch chan *entity.Guess) 
 
 		conn.OnConnect(func() {
 			logElem("[Sys]: Matching! Start P2P chat not via server\n")
-			conn.CloseWebSocketConnection()
 			cch <- struct{}{}
+			cch <- struct{}{}
+			conn.CloseWebSocketConnection()
 		})
 
 		conn.OnDataChannel(func(c *webrtc.DataChannel) {
@@ -196,7 +200,7 @@ func Matching(cch chan struct{}, hch chan *entity.Hand, gch chan *entity.Guess) 
 			// }
 			// setProfile(userID, resMsg.UserID, myRate, opRate)
 			finChan := make(chan struct{})
-			dc.OnMessage(onMessage(dc, hch, gch, finChan, board))
+			dc.OnMessage(onMessage(dc, hch, gch, qch, tch, finChan, board))
 			go func() {
 				<-finChan
 				if err := updateRating(ratingURL, resMsg.RoomID, userID, hash, 2, board.Result()); err != nil {
@@ -380,7 +384,7 @@ type Message struct {
 	MyHand string `json:"my_hand,omitempty"`
 }
 
-func onMessage(dc *webrtc.DataChannel, hch chan *entity.Hand, gch chan *entity.Guess, finChan chan struct{}, board *entity.Board) func(webrtc.DataChannelMessage) {
+func onMessage(dc *webrtc.DataChannel, hch chan *entity.Hand, gch chan *entity.Guess, qch chan *entity.QA, tch chan bool, finChan chan struct{}, board *entity.Board) func(webrtc.DataChannelMessage) {
 	return func(msg webrtc.DataChannelMessage) {
 		log.Printf("recieve msg.Data: %s", string(msg.Data))
 		if !msg.IsString {
@@ -402,6 +406,7 @@ func onMessage(dc *webrtc.DataChannel, hch chan *entity.Hand, gch chan *entity.G
 				seed := rand.Int()
 				myHand := entity.NewHandBySeed(seed)
 				hch <- myHand
+				// tch <- initTurn.IsMyTurn()
 				log.Printf("myHand(unopener): %v", myHand)
 				// setHand(true, myHand)
 				board.Start(myHand, initTurn, 2)
@@ -429,6 +434,7 @@ func onMessage(dc *webrtc.DataChannel, hch chan *entity.Hand, gch chan *entity.G
 			}
 			// 自分ターンへ遷移
 			board.ToggleTurn()
+			tch <- true
 			setTurn("It's Your Turn !")
 			guess := entity.NewGuessFromText(message.Guess)
 			ans := board.CalcAnswer(guess)
@@ -437,9 +443,10 @@ func onMessage(dc *webrtc.DataChannel, hch chan *entity.Hand, gch chan *entity.G
 			by, _ := json.Marshal(ansMsg)
 			board.CountTurn()
 			board.AddOpQA(entity.NewQA(guess, ans))
-			setScore(board, guess.View(), hit, blow)
+			// setScore(board, guess.View(), hit, blow)
+			qch <- entity.NewQA(guess, ans)
 			j := board.Judge()
-			setJudge(j)
+			// setJudge(j)
 			log.Printf("ansMsg: %v", string(by))
 			if err := dc.SendText(string(by)); err != nil {
 				log.Printf("failed to send ansMsg: %v", err)
@@ -457,16 +464,17 @@ func onMessage(dc *webrtc.DataChannel, hch chan *entity.Hand, gch chan *entity.G
 			ans := entity.NewAnswer(*message.Hit, *message.Blow)
 			board.CountTurn()
 			board.AddMyQA(entity.NewQA(recentGuess, ans))
-			setScore(board, recentGuess.View(), ans.Hit(), ans.Blow())
+			// setScore(board, recentGuess.View(), ans.Hit(), ans.Blow())
+			qch <- entity.NewQA(recentGuess, ans)
 			j := board.Judge()
-			setJudge(j)
+			// setJudge(j)
 			if j != entity.NotYet {
 				finishProcess(dc, board, finChan)
 				return
 			}
 			return
 		case "timeout":
-			setJudge(entity.Win)
+			// setJudge(entity.Win)
 			finishProcess(dc, board, finChan)
 			return
 		case "expose":
@@ -509,13 +517,14 @@ func onMessage(dc *webrtc.DataChannel, hch chan *entity.Hand, gch chan *entity.G
 				return
 			}
 			logElem("[Sys]: You Timeout! You Lose!\n")
-			setJudge(entity.Lose)
+			// setJudge(entity.Lose)
 			finishProcess(dc, board, finChan)
 			return
 		}
 		guessMsg := Message{Type: "guess", Guess: myGuess.Msg()}
 		by, _ := json.Marshal(guessMsg)
 		// 相手ターンへ遷移
+		tch <- false
 		board.ToggleTurn()
 		setTurn("It's Opponent's Turn, Waiting...")
 		if err := dc.SendText(string(by)); err != nil {

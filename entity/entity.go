@@ -33,6 +33,10 @@ func (t Turn) Reverse() Turn {
 	return t ^ 1
 }
 
+func (t Turn) IsMyTurn() bool {
+	return t == MyTurn
+}
+
 func NewTurnBySeed(seed int) Turn {
 	return Turn(seed % 2)
 }
@@ -146,6 +150,14 @@ type QA struct {
 
 func NewQA(guess *Guess, answer *Answer) *QA {
 	return &QA{guess, answer}
+}
+
+func (qa *QA) GuessView() []int {
+	return []int(*qa.guess)
+}
+
+func (qa *QA) HistoryView() []int {
+	return []int{qa.answer.hit, qa.answer.blow}
 }
 
 type Board struct {

@@ -27,6 +27,10 @@ func NewHistory(fs []*Feedback, w, h int, hdTxt string, bgc, txc color.Color) *H
 	return &History{fs, w, h, base, headerCard, hbHeaderCard, emptyRect, hbEmptyRect}
 }
 
+func (h *History) AddFeedback(fb *Feedback) {
+	h.feedbacks = append(h.feedbacks, fb)
+}
+
 func (h *History) Draw(screen *ebiten.Image, x, y int) {
 	h.base.Fill()
 	h.headerCard.Draw(h.base.Image(), 3, 0)
