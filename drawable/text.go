@@ -39,6 +39,10 @@ func (t *Text) SetText(text string) {
 	t.text = text
 }
 
+func (t *Text) SetColor(c color.Color) {
+	t.color = c
+}
+
 func (t *Text) font() *text.GoTextFace {
 	var source *text.GoTextFaceSource
 	source, _ = text.NewGoTextFaceSource(bytes.NewReader(fonts.MPlus1pRegular_ttf))

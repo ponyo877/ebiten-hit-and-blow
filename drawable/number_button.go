@@ -7,12 +7,14 @@ import (
 )
 
 type NumberButton struct {
-	card       *Card
-	inputField *Input
+	card             *Card
+	ebgc, dbgc, txtc color.Color
+	inputField       *Input
+	enable           bool
 }
 
-func NewNumberButton(n, w, h, ts int, bgc, txtc color.Color, inputField *Input) *NumberButton {
-	return &NumberButton{NewNumberCard(n, w, h, ts, bgc, txtc), inputField}
+func NewNumberButton(n, w, h, ts int, ebgc, dbgc, txtc color.Color, inputField *Input) *NumberButton {
+	return &NumberButton{NewNumberCard(n, w, h, ts, ebgc, txtc), ebgc, dbgc, txtc, inputField, true}
 }
 
 func (b *NumberButton) Bounds() (int, int) {
@@ -20,7 +22,20 @@ func (b *NumberButton) Bounds() (int, int) {
 }
 
 func (b *NumberButton) Push() {
+	if !b.enable || !b.inputField.Addble() {
+		return
+	}
 	b.inputField.Add(b.card.Text())
+}
+
+func (b *NumberButton) Enable() {
+	b.enable = true
+	b.card.SetColor(b.ebgc)
+}
+
+func (b *NumberButton) Disable() {
+	b.enable = false
+	b.card.SetColor(b.dbgc)
 }
 
 func (b *NumberButton) Draw(screen *ebiten.Image, x, y int) {

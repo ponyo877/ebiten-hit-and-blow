@@ -26,6 +26,10 @@ func (c *Rounded) Bounds() (int, int) {
 	return c.w, c.h
 }
 
+func (c *Rounded) SetColor(bgc color.Color) {
+	c.bgColor = bgc
+}
+
 func (c *Rounded) Draw(screen *ebiten.Image, x, y int) {
 	wf, hf, xf, yf := float32(c.w), float32(c.h), float32(x), float32(y)
 	var path vector.Path

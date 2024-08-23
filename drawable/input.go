@@ -44,8 +44,12 @@ func (cs *Input) Bounds() (int, int) {
 	return cs.w*cnt + cs.margin*(cnt-1), cs.h
 }
 
+func (cs *Input) Addble() bool {
+	return len(cs.Input) < maxLength
+}
+
 func (cs *Input) Add(t string) {
-	if len(cs.Input) > maxLength {
+	if !cs.Addble() {
 		return
 	}
 	cs.Input = append(cs.Input, NewCard(t, cs.w, cs.h, cs.txtSize, HistoryFrameColor, color.Black))
