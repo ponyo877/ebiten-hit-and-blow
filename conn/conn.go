@@ -64,7 +64,7 @@ type updateRatingResMsg struct {
 	Result   string `json:"result"`
 }
 
-func Matching(cch chan struct{}, hch chan *entity.Hand, gch chan *entity.Guess, qch chan *entity.QA, tch chan bool) {
+func Matching(cch chan struct{}, hch chan *entity.Hand, gch chan *entity.Guess, qch chan *entity.QA, tch chan bool, tich chan int, jch chan entity.JudgeStatus) {
 	mmURL := url.URL{Scheme: wsScheme, Host: matchmakingOrigin, Path: "/matchmaking"}
 	signalingURL := url.URL{Scheme: wsScheme, Host: signalingOrigin, Path: "/signaling"}
 	ratingURL := url.URL{Scheme: httpScheme, Host: ratingOrigin, Path: "/rating"}
@@ -122,7 +122,6 @@ func Matching(cch chan struct{}, hch chan *entity.Hand, gch chan *entity.Guess, 
 	}
 	ws.Close(websocket.StatusNormalClosure, "close connection")
 	if resMsg.Type == "MATCH" {
-
 		conn = ayame.NewConnection(signalingURL.String(), resMsg.RoomID, ayame.DefaultOptions(), false, false)
 		conn.OnOpen(func(metadata *interface{}) {
 			var err error
@@ -170,7 +169,7 @@ func Matching(cch chan struct{}, hch chan *entity.Hand, gch chan *entity.Guess, 
 				}
 			}(hch, cch, tch)
 			finChan := make(chan struct{})
-			dc.OnMessage(onMessage(dc, hch, gch, qch, tch, finChan, board))
+			dc.OnMessage(onMessage(dc, hch, gch, qch, tch, tich, jch, finChan, board))
 			go func() {
 				<-finChan
 				if err := updateRating(ratingURL, resMsg.RoomID, userID, hash, 1, board.Result()); err != nil {
@@ -200,7 +199,7 @@ func Matching(cch chan struct{}, hch chan *entity.Hand, gch chan *entity.Guess, 
 			// }
 			// setProfile(userID, resMsg.UserID, myRate, opRate)
 			finChan := make(chan struct{})
-			dc.OnMessage(onMessage(dc, hch, gch, qch, tch, finChan, board))
+			dc.OnMessage(onMessage(dc, hch, gch, qch, tch, tich, jch, finChan, board))
 			go func() {
 				<-finChan
 				if err := updateRating(ratingURL, resMsg.RoomID, userID, hash, 2, board.Result()); err != nil {
@@ -384,7 +383,7 @@ type Message struct {
 	MyHand string `json:"my_hand,omitempty"`
 }
 
-func onMessage(dc *webrtc.DataChannel, hch chan *entity.Hand, gch chan *entity.Guess, qch chan *entity.QA, tch chan bool, finChan chan struct{}, board *entity.Board) func(webrtc.DataChannelMessage) {
+func onMessage(dc *webrtc.DataChannel, hch chan *entity.Hand, gch chan *entity.Guess, qch chan *entity.QA, tch chan bool, tich chan int, jch chan entity.JudgeStatus, finChan chan struct{}, board *entity.Board) func(webrtc.DataChannelMessage) {
 	return func(msg webrtc.DataChannelMessage) {
 		log.Printf("recieve msg.Data: %s", string(msg.Data))
 		if !msg.IsString {
@@ -406,7 +405,7 @@ func onMessage(dc *webrtc.DataChannel, hch chan *entity.Hand, gch chan *entity.G
 				seed := rand.Int()
 				myHand := entity.NewHandBySeed(seed)
 				hch <- myHand
-				// tch <- initTurn.IsMyTurn()
+				tch <- initTurn.IsMyTurn()
 				log.Printf("myHand(unopener): %v", myHand)
 				// setHand(true, myHand)
 				board.Start(myHand, initTurn, 2)
@@ -453,6 +452,7 @@ func onMessage(dc *webrtc.DataChannel, hch chan *entity.Hand, gch chan *entity.G
 				return
 			}
 			if j != entity.NotYet {
+				jch <- j
 				finishProcess(dc, board, finChan)
 				return
 			}
@@ -469,11 +469,13 @@ func onMessage(dc *webrtc.DataChannel, hch chan *entity.Hand, gch chan *entity.G
 			j := board.Judge()
 			// setJudge(j)
 			if j != entity.NotYet {
+				jch <- j
 				finishProcess(dc, board, finChan)
 				return
 			}
 			return
 		case "timeout":
+			jch <- entity.Win
 			// setJudge(entity.Win)
 			finishProcess(dc, board, finChan)
 			return
@@ -489,25 +491,27 @@ func onMessage(dc *webrtc.DataChannel, hch chan *entity.Hand, gch chan *entity.G
 
 		// 60sの間にguessを送信する処理
 		timeout := 60
-		gracePeriod := 1
-		toChan := make(chan struct{})
-		go func(to int, ch chan struct{}) {
+		// gracePeriod := 1
+		catchCh := make(chan struct{})
+		toCh := make(chan struct{})
+		go func(to int, cch, tch chan struct{}, timeCh chan int) {
 			for {
 				select {
-				case <-ch:
-					log.Printf("catch guess!!!!")
+				case <-cch:
+					log.Printf("catch guess!")
 					return
 				default:
 					to--
-					setTimer(to)
+					timeCh <- to
 					if to <= 0 {
+						tch <- struct{}{}
 						return
 					}
 					time.Sleep(1 * time.Second)
 				}
 			}
-		}(timeout, toChan)
-		myGuess, isTO := board.WaitGuess(gch, toChan, time.Duration(timeout+gracePeriod)*time.Second)
+		}(timeout, catchCh, toCh, tich)
+		myGuess, isTO := board.WaitGuess(gch, catchCh, toCh)
 		recentGuess = myGuess
 		if isTO {
 			toMsg := Message{Type: "timeout"}
@@ -517,6 +521,7 @@ func onMessage(dc *webrtc.DataChannel, hch chan *entity.Hand, gch chan *entity.G
 				return
 			}
 			logElem("[Sys]: You Timeout! You Lose!\n")
+			jch <- entity.Lose
 			// setJudge(entity.Lose)
 			finishProcess(dc, board, finChan)
 			return

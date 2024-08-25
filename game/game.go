@@ -7,6 +7,7 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"log"
+	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
@@ -32,6 +33,8 @@ type Game struct {
 	gch                chan *entity.Guess
 	qch                chan *entity.QA
 	tch                chan bool
+	tich               chan int
+	jch                chan entity.JudgeStatus
 	playerBoard        *drawable.PlayerBoard
 	historyBoard       *drawable.HistoryBoard
 	inputBoard         *drawable.InputBoard
@@ -42,13 +45,20 @@ type Game struct {
 	deleteKey          *drawable.EffectButton
 	numberButtons      []*drawable.NumberButton
 	searchButton       *drawable.EffectButton
-	isMyturn           bool
+	message            *drawable.Message
+	resultText         *drawable.Text
+	isMyTurn           bool
+	isMyTurnInit       *bool
+	bliCounter         int
+	aniCounter         int
 	tmp                *ebiten.Image
 	changeHistoryBoard bool
 	changePlayerBoard  bool
-	changeInput        bool
+	isJustPushed       bool
+	isJustCleared      bool
 	changeTimer        bool
 	changeMode         bool
+	changeTurn         bool
 }
 
 func NewGame() *Game {
@@ -63,6 +73,8 @@ func (g *Game) Start() error {
 	g.gch = make(chan *entity.Guess)
 	g.qch = make(chan *entity.QA)
 	g.tch = make(chan bool)
+	g.tich = make(chan int)
+	g.jch = make(chan entity.JudgeStatus)
 	return ebiten.RunGame(g)
 }
 
@@ -72,20 +84,25 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeigh
 
 func (g *Game) Update() error {
 	w, h := screenWidth, screenHeight
-	name := "NoName"
-	rate := 1500
-	reader := bytes.NewReader(static.Profile)
 	if g.tmp == nil {
+		name := "NoName"
+		rate := 1500
+		reader := bytes.NewReader(static.Me)
 		img, _, _ := image.Decode(reader)
-		icon := drawable.NewIcon(w*90/750, w*90/750, img)
-		myPlayer := drawable.NewPlayer(w/2, h*90/1334, h*30/1334, icon, name, rate, drawable.TransColor, color.White)
-		emPlayer := drawable.NewPlayer(w/2, h*90/1334, h*30/1334, icon, name, rate, drawable.TransColor, color.White)
+		myIcon := drawable.NewIcon(w*90/750, w*90/750, img)
+		reader = bytes.NewReader(static.Enemy)
+		img, _, _ = image.Decode(reader)
+		emIcon := drawable.NewIcon(w*90/750, w*90/750, img)
+		myPlayer := drawable.NewPlayer(w/2, h*90/1334, h*30/1334, myIcon, name, rate, drawable.TransColor, color.White)
+		emPlayer := drawable.NewPlayer(w/2, h*90/1334, h*30/1334, emIcon, name, rate, drawable.TransColor, color.White)
 		myHand := drawable.NewHand([]string{"?", "?", "?"}, w*45/375, h*120/1334, h*100/1334, w*15/375, color.White, drawable.HistoryFrameColor, drawable.HistoryBackgroundColor)
 		emHand := drawable.NewHand([]string{"?", "?", "?"}, w*45/375, h*120/1334, h*100/1334, w*15/375, color.White, drawable.HistoryFrameColor, drawable.HistoryBackgroundColor)
-		g.playerBoard = drawable.NewPlayerBoard(myPlayer, emPlayer, myHand, emHand, w, h*2/10, drawable.MyPlayerColor, drawable.EnemyPlayerColor)
+		myInitT := drawable.NewCard("??", w*45/375, h*20/1334, h*20/1334, drawable.HistoryFrameColor, color.White)
+		emInitT := drawable.NewCard("??", w*45/375, h*20/1334, h*20/1334, drawable.HistoryFrameColor, color.White)
+		g.playerBoard = drawable.NewPlayerBoard(myPlayer, emPlayer, myHand, emHand, myInitT, emInitT, w, h*2/10, drawable.MyPlayerColor, drawable.EnemyPlayerColor)
 		myHistory := drawable.NewHistory([]*drawable.Feedback{}, w*350/750, h*55/1334, "あなたの推理", drawable.HistoryFrameColor, color.White)
 		emHistory := drawable.NewHistory([]*drawable.Feedback{}, w*350/750, h*55/1334, "相手の推理", drawable.HistoryFrameColor, color.White)
-		g.historyBoard = drawable.NewHistoryBoard(myHistory, emHistory, w, h*5/10, drawable.HistoryBackgroundColor)
+		g.historyBoard = drawable.NewHistoryBoard(myHistory, emHistory, w, h*17/40, drawable.HistoryBackgroundColor)
 		g.timer = drawable.NewTimer(w*60/750, w*60/750, w*60/750, color.White, drawable.HistoryFrameColor)
 		g.inputField = drawable.NewInput([]string{}, w*75/750, h*100/1334, h*100/1334, w*30/375, drawable.HistoryFrameColor, drawable.MessageColor)
 		g.numberButtons = []*drawable.NumberButton{
@@ -105,7 +122,9 @@ func (g *Game) Update() error {
 		g.tenkey = drawable.NewTenkey(g.numberButtons, w*12/750, h*16/1334, w, h*25/40+(h*3/10)*19/40)
 		g.enterKey = drawable.NewEffectButton("決定", w*330/750, h*90/1334, h*80/1334, drawable.GrayColor, color.White, w*110/750+wmargin, h*25/40+(h*3/10)*19/40+h*180/1334+2*hmargin, g.inputField)
 		g.deleteKey = drawable.NewEffectButton("←", w*110/750, h*90/1334, h*80/1334, drawable.GrayColor, color.White, w*440/750+3*wmargin, h*25/40+(h*3/10)*19/40+h*180/1334+2*hmargin, g.inputField)
-		g.inputBoard = drawable.NewInputBoard(w, h*4/10, h*30/1334, "相手は考えています...", g.inputField, drawable.HistoryFrameColor, drawable.MessageColor)
+		g.inputBoard = drawable.NewInputBoard(w, h*15/40, drawable.HistoryFrameColor)
+		g.message = drawable.NewMessage("対戦相手を探してください", w*30/750, screenWidth/2, w*30/750, drawable.MessageColor, drawable.HistoryFrameColor) // y :=  screenHeight*25/40+(h*4/10)/20
+		g.resultText = drawable.NewText("", w*100/750, color.White)
 		go func(ch chan *entity.Hand) {
 			h := <-ch
 			g.playerBoard.MyHand().SetHand(h)
@@ -118,8 +137,9 @@ func (g *Game) Update() error {
 		g.searchButton = drawable.NewEffectButton("対戦相手を探す", w*600/750, h*90/1334, h*80/1334, drawable.GrayColor, color.White, w*110/750, h*25/40+(h*3/10)*19/40+h*180/1334, g.inputField)
 		// ボタンのクリック判定
 		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+			g.message.SetMessage("対戦相手を探しています...")
 			if g.searchButton.In(ebiten.CursorPosition()) {
-				go conn.Matching(g.cch, g.hch, g.gch, g.qch, g.tch)
+				go conn.Matching(g.cch, g.hch, g.gch, g.qch, g.tch, g.tich, g.jch)
 				go func(ch chan struct{}) {
 					<-ch
 					g.changeMode = true
@@ -130,48 +150,88 @@ func (g *Game) Update() error {
 						qa := <-ch
 						gs := drawable.NewNumberCards(qa.GuessView(), w*30/750, h*40/1334, h*40/1334, w*5/375, drawable.TransColor, drawable.HistoryFrameColor)
 						hs := drawable.NewNumberCards(qa.HistoryView(), w*30/750, h*40/1334, h*40/1334, w*5/375, drawable.TransColor, drawable.HistoryFrameColor)
-						if g.isMyturn {
-							g.historyBoard.EmHistory().AddFeedback(drawable.NewFeedback(gs, hs))
+						if g.isMyTurn {
+							g.historyBoard.EmHistory().Add(drawable.NewFeedback(gs, hs))
 						} else {
-							g.historyBoard.MyHistory().AddFeedback(drawable.NewFeedback(gs, hs))
+							g.historyBoard.MyHistory().Add(drawable.NewFeedback(gs, hs))
 						}
 						g.changeHistoryBoard = true
 					}
 				}(g.qch)
 				go func(ch chan bool) {
 					for {
-						g.isMyturn = <-ch
-						log.Println("g.isMyturn", g.isMyturn)
-						// g.changeTimer = true
-						// g.timer.Start()
+						g.isMyTurn = <-ch
+						g.timer.Set(60)
+						if g.isMyTurnInit == nil {
+							g.isMyTurnInit = &g.isMyTurn
+							myTurnText, emTurnText := "後攻", "先攻"
+							if *g.isMyTurnInit {
+								myTurnText, emTurnText = "先攻", "後攻"
+							}
+							g.playerBoard.MyInitTurn().SetText(myTurnText)
+							g.playerBoard.EmInitTurn().SetText(emTurnText)
+							g.changePlayerBoard = true
+						}
+						g.message.SetMessage("相手は考えています...")
+						if g.isMyTurn {
+							g.message.SetMessage("推理した3桁の数字を入れてください")
+						}
+						g.changeTurn = true
+						g.changeTimer = true
+						log.Println("g.isMyTurn", g.isMyTurn)
 					}
 				}(g.tch)
+				go func(ch chan int) {
+					for {
+						g.timer.Set(<-ch)
+						g.changeTimer = true
+					}
+				}(g.tich)
+				go func(ch chan entity.JudgeStatus) {
+					for {
+						switch <-ch {
+						case entity.Win:
+							g.message.SetMessage("あなたの勝ちです")
+							g.resultText.SetText("YOU WIN!")
+						case entity.Lose:
+							g.message.SetMessage("あなたの負けです")
+							g.resultText.SetText("YOU LOSE!")
+						case entity.Draw:
+							g.message.SetMessage("引き分けです")
+							g.resultText.SetText("DRAW!")
+						}
+						g.changeMode = true
+						g.mode = ModeFinished
+					}
+				}(g.jch)
 			}
 		}
-
-	case ModeWaiting:
-
 	case ModePlaying:
 		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 			pushedButton := g.tenkey.WhichButtonByPosition(ebiten.CursorPosition())
-			log.Println("pushedButton!!")
-			if pushedButton != nil {
+			if pushedButton != nil && g.inputField.Addble() {
 				pushedButton.Push()
 				pushedButton.Disable()
-				g.changeInput = true
+				g.isJustPushed = true
+				return nil
 			}
 			if g.enterKey.In(ebiten.CursorPosition()) {
 				g.enterKey.Send(func(ns []int) {
 					conn.Send(g.gch, ns)
 				})
-				g.changeInput = true
+				for _, nb := range g.numberButtons {
+					nb.Enable()
+				}
+				g.isJustCleared = true
+				return nil
 			}
 			if g.deleteKey.In(ebiten.CursorPosition()) {
 				g.deleteKey.Clear()
 				for _, nb := range g.numberButtons {
 					nb.Enable()
 				}
-				g.changeInput = true
+				g.isJustCleared = true
+				return nil
 			}
 		}
 	case ModeFinished:
@@ -184,43 +244,114 @@ func (g *Game) Update() error {
 func (g *Game) Draw(screen *ebiten.Image) {
 	if g.tmp == nil || g.changeMode {
 		g.tmp = ebiten.NewImage(screenWidth, screenHeight)
-		g.tmp.Fill(drawable.TransColor)
-		g.playerBoard.Draw(g.tmp, 0, 0)
-		g.historyBoard.Draw(g.tmp, 0, screenHeight*2/10)
-		// g.inputBoard.Draw(g.tmp, 0, screenHeight*25/40)
-		// g.changeMode = false
+		if !g.changePlayerBoard {
+			g.playerBoard.Draw(g.tmp, 0, 0)
+		}
+		if !g.changeHistoryBoard {
+			g.historyBoard.Draw(g.tmp, 0, screenHeight*2/10)
+		}
+		g.inputBoard.Draw(g.tmp, 0, screenHeight*25/40)
 	}
 	if g.changePlayerBoard {
 		g.playerBoard.Draw(g.tmp, 0, 0)
 		g.changePlayerBoard = false
 	}
+	if g.changeHistoryBoard {
+		g.historyBoard.Draw(g.tmp, 0, screenHeight*2/10)
+		g.changeHistoryBoard = false
+	}
 	// インタラクションな描画
 	switch g.mode {
 	case ModeInit:
 		g.searchButton.Draw(g.tmp)
-	default:
-		if g.changeMode || g.changeInput {
+	case ModePlaying:
+		if g.isJustPushed {
+			g.inputField.Draw(g.tmp, 0, screenHeight*27/40)
+			g.tenkey.DrawPart(g.tmp, g.inputField.EndNumber())
+			g.isJustPushed = false
+		}
+		if g.isJustCleared {
+			g.inputField.Draw(g.tmp, 0, screenHeight*27/40)
+			g.tenkey.Draw(g.tmp)
+			g.isJustCleared = false
+		}
+		if g.changeMode {
 			g.inputBoard.Draw(g.tmp, 0, screenHeight*25/40)
+			g.inputField.Draw(g.tmp, 0, screenHeight*27/40)
 			g.timer.Draw(g.tmp, 0, screenHeight*25/40)
 			g.tenkey.Draw(g.tmp)
 			g.enterKey.Draw(g.tmp)
 			g.deleteKey.Draw(g.tmp)
 			g.changeMode = false
-			g.changeInput = false
 		}
-		if g.changeHistoryBoard {
-			g.historyBoard.Draw(g.tmp, 0, screenHeight*2/10)
-			g.changeHistoryBoard = false
-		}
-		// if g.changeInput {
-		// 	g.inputBoard.Draw(g.tmp, 0, screenHeight*25/40)
-		// 	g.changeInput = false
-		// }
-		if !g.changeTimer {
+		if g.changeTimer {
 			g.timer.Draw(g.tmp, 0, screenHeight*25/40)
+			g.changeTimer = false
 		}
+	case ModeFinished:
+		g.resultText.Draw(g.tmp, 0, screenHeight/4)
 	}
-	ocOp := &ebiten.DrawImageOptions{}
-	ocOp.GeoM.Translate(0, 0)
-	screen.DrawImage(g.tmp, ocOp)
+	screen.DrawImage(g.tmp, &ebiten.DrawImageOptions{})
+	g.counterHelper(func() {
+		ocOp2 := &ebiten.DrawImageOptions{}
+		ocOp2.GeoM.Translate(0, float64(screenHeight*25/40))
+		tmp2 := ebiten.NewImage(screenWidth, screenWidth*50/750)
+		g.message.Draw(tmp2)
+		screen.DrawImage(tmp2, ocOp2)
+		if g.mode == ModeInit {
+			return
+		}
+		ocOp3 := &ebiten.DrawImageOptions{}
+		tmp3 := &ebiten.Image{}
+		if g.isMyTurn {
+			w, h, x, y := g.historyBoard.MyHistory().WaitingRect()
+			ocOp3.GeoM.Translate(x+5, y+float64(screenHeight*2/10+5))
+			tmp3 = ebiten.NewImage(w, h)
+			g.historyBoard.MyHistory().DrawWaiting(tmp3)
+		} else {
+			w, h, x, y := g.historyBoard.EmHistory().WaitingRect()
+			ocOp3.GeoM.Translate(x+5+float64(screenWidth/2), y+float64(screenHeight*2/10+5))
+			tmp3 = ebiten.NewImage(w, h)
+			g.historyBoard.EmHistory().DrawWaiting(tmp3)
+		}
+		screen.DrawImage(tmp3, ocOp3)
+	},
+		func() {
+			g.aniCounter++
+			text := drawable.NewText("相手のターンです", 30, drawable.HistoryFrameColor)
+			if g.isMyTurn {
+				text = drawable.NewText("あなたのターンです", 30, drawable.HistoryFrameColor)
+			}
+			w, _ := text.Bounds()
+			tmp := ebiten.NewImage(w, 30)
+			tmp.Fill(color.White)
+			aniOp := &ebiten.DrawImageOptions{}
+			aniOp.GeoM.Translate(25*math.Cos(float64(g.aniCounter))+float64(screenWidth/2-w/2), float64(screenHeight/2))
+
+			text.Draw(tmp, 0, 0)
+			screen.DrawImage(tmp, aniOp)
+		},
+	)
+}
+
+func (g *Game) counterHelper(blinkingFunc func(), animationFunc func()) {
+	g.bliCounter++
+	bliMaxCount := 20
+	aniMaxCount := 20
+	lightRatio := 0.7
+	changeCount := int(float64(bliMaxCount) * lightRatio)
+	if !g.changeTurn && g.bliCounter <= changeCount {
+		blinkingFunc()
+	}
+	if g.changeTurn && g.mode == ModePlaying {
+		animationFunc()
+	}
+
+	if g.bliCounter > bliMaxCount {
+		g.bliCounter = 0
+	}
+	if g.aniCounter > aniMaxCount {
+		g.aniCounter = 0
+		g.changeTurn = false
+	}
 }

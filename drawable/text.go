@@ -8,22 +8,20 @@ import (
 	"github.com/hajimehoshi/ebiten/examples/resources/fonts"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
-	"github.com/ponyo877/ebiten-hit-and-blow/static"
 )
 
 type Text struct {
-	text       string
-	numberFlag bool
-	size       int
-	color      color.Color
+	text  string
+	size  int
+	color color.Color
 }
 
 func NewNumber(n, s int, c color.Color) *Text {
-	return &Text{fmt.Sprint(n), true, s, c}
+	return &Text{fmt.Sprint(n), s, c}
 }
 
 func NewText(t string, s int, c color.Color) *Text {
-	return &Text{t, false, s, c}
+	return &Text{t, s, c}
 }
 
 func (t *Text) Bounds() (int, int) {
@@ -46,9 +44,9 @@ func (t *Text) SetColor(c color.Color) {
 func (t *Text) font() *text.GoTextFace {
 	var source *text.GoTextFaceSource
 	source, _ = text.NewGoTextFaceSource(bytes.NewReader(fonts.MPlus1pRegular_ttf))
-	if t.numberFlag {
-		source, _ = text.NewGoTextFaceSource(bytes.NewReader(static.NumberFont))
-	}
+	// if _, err := strconv.Atoi(t.text); err == nil {
+	// 	source, _ = text.NewGoTextFaceSource(bytes.NewReader(static.NumberFont))
+	// }
 	return &text.GoTextFace{
 		Source: source,
 		Size:   float64(t.size),

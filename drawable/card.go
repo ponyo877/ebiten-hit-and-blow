@@ -33,6 +33,10 @@ func (c *Card) Text() string {
 	return c.text.Text()
 }
 
+func (c *Card) SetText(n string) {
+	c.text.SetText(n)
+}
+
 func (c *Card) SetColor(bgc color.Color) {
 	c.rounded = NewRounded(c.w, c.h, bgc)
 }

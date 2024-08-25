@@ -22,15 +22,16 @@ func (t *Tenkey) Bounds() (int, int) {
 
 func (t *Tenkey) WhichButtonByPosition(x, y int) *NumberButton {
 	turn := len(t.buttons) / 2
+	w, h := t.buttons[0].Bounds()
+	tx := t.x()
 	for i, b := range t.buttons {
-		w, h := b.Bounds()
 		if i < turn {
-			if x >= t.x()+i*(w+t.wmargin) && x <= t.x()+i*(w+t.wmargin)+w && y >= t.y && y <= t.y+h {
+			if x >= tx+i*(w+t.wmargin) && x <= tx+i*(w+t.wmargin)+w && y >= t.y && y <= t.y+h {
 				return b
 			}
 			continue
 		}
-		if x >= t.x()+(i-turn)*(w+t.wmargin) && x <= t.x()+(i-turn)*(w+t.wmargin)+w && y >= t.y+t.hmargin+h && y <= t.y+t.hmargin+2*h {
+		if x >= tx+(i-turn)*(w+t.wmargin) && x <= tx+(i-turn)*(w+t.wmargin)+w && y >= t.y+t.hmargin+h && y <= t.y+t.hmargin+2*h {
 			return b
 		}
 	}
@@ -42,14 +43,28 @@ func (t *Tenkey) x() int {
 	return t.wholeWidth/2 - w/2
 }
 
+func (t *Tenkey) DrawPart(screen *ebiten.Image, num int) {
+	turn := len(t.buttons) / 2
+	if num < 0 {
+		return
+	}
+	w, h := t.buttons[num].Bounds()
+	if num < turn {
+		t.buttons[num].Draw(screen, t.x()+num*(w+t.wmargin), t.y)
+		return
+	}
+	t.buttons[num].Draw(screen, t.x()+(num-turn)*(w+t.wmargin), t.y+t.hmargin+h)
+}
+
 func (t *Tenkey) Draw(screen *ebiten.Image) {
 	turn := len(t.buttons) / 2
+	w, h := t.buttons[0].Bounds()
+	tx := t.x()
 	for i, b := range t.buttons {
-		w, h := b.Bounds()
 		if i < turn {
-			b.Draw(screen, t.x()+i*(w+t.wmargin), t.y)
+			b.Draw(screen, tx+i*(w+t.wmargin), t.y)
 			continue
 		}
-		b.Draw(screen, t.x()+(i-turn)*(w+t.wmargin), t.y+t.hmargin+h)
+		b.Draw(screen, tx+(i-turn)*(w+t.wmargin), t.y+t.hmargin+h)
 	}
 }

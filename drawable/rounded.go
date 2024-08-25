@@ -41,15 +41,6 @@ func (c *Rounded) Draw(screen *ebiten.Image, x, y int) {
 	path.Close()
 
 	vs, is := path.AppendVerticesAndIndicesForFilling(nil, nil)
-	// re, gr, bl, al := c.bgColor.RGBA()
-	// for i := range vs {
-	// 	vs[i].SrcX = 1
-	// 	vs[i].SrcY = 1
-	// 	vs[i].ColorR = float32(re) / 0xffff
-	// 	vs[i].ColorG = float32(gr) / 0xffff
-	// 	vs[i].ColorB = float32(bl) / 0xffff
-	// 	vs[i].ColorA = float32(al) / 0xffff
-	// }
 	whiteImage.Fill(c.bgColor)
 	op := &ebiten.DrawTrianglesOptions{}
 	op.FillRule = ebiten.NonZero

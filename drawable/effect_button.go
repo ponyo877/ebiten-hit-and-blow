@@ -3,6 +3,8 @@ package drawable
 import (
 	"image/color"
 
+	"log"
+
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -24,12 +26,10 @@ func (b *EffectButton) Push() {
 	b.inputField.Add(b.card.Text())
 }
 
-func (b *EffectButton) Do(do func()) {
-	do()
-}
-
 func (b *EffectButton) Send(do func([]int)) {
+	log.Print("send1")
 	do(b.inputField.Numbers())
+	log.Print("send2")
 	b.inputField.Clear()
 }
 

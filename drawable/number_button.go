@@ -22,7 +22,7 @@ func (b *NumberButton) Bounds() (int, int) {
 }
 
 func (b *NumberButton) Push() {
-	if !b.enable || !b.inputField.Addble() {
+	if !b.enable {
 		return
 	}
 	b.inputField.Add(b.card.Text())

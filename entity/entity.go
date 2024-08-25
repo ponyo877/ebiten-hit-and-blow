@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"slices"
-	"time"
 
 	"github.com/mowshon/iterium"
 )
@@ -297,12 +296,12 @@ func (b *Board) AddOpQA(qa *QA) {
 	b.opQA = append(b.opQA, qa)
 }
 
-func (b *Board) WaitGuess(ch chan *Guess, toChan chan struct{}, to time.Duration) (*Guess, bool) {
+func (b *Board) WaitGuess(ch chan *Guess, cCh, toCh chan struct{}) (*Guess, bool) {
 	select {
 	case guess := <-ch:
-		close(toChan)
+		close(cCh)
 		return guess, false
-	case <-time.After(to):
+	case <-toCh:
 		return nil, true
 	}
 }

@@ -1,7 +1,6 @@
 package drawable
 
 import (
-	"fmt"
 	"image/color"
 	"strconv"
 
@@ -16,7 +15,9 @@ type Input struct {
 	w, h            int
 	txtSize, margin int
 	bgc, txc        color.Color
-	Input           []*Card
+	cards           []*Card
+	preCards        map[string]*Card
+	numbers         []int
 }
 
 func NewInput(texts []string, w, h, ts, m int, bgc, txc color.Color) *Input {
@@ -24,15 +25,12 @@ func NewInput(texts []string, w, h, ts, m int, bgc, txc color.Color) *Input {
 	for i, n := range texts {
 		cs[i] = NewCard(n, w, h, ts, bgc, txc)
 	}
-	return &Input{w, h, ts, m, bgc, txc, cs}
-}
-
-func NewNumberInput(ns []int, w, h, ts, m int, bgc, txc color.Color) *Input {
-	cs := make([]string, len(ns))
-	for i, n := range ns {
-		cs[i] = fmt.Sprint(n)
+	preCards := make(map[string]*Card)
+	for i := 0; i < 10; i++ {
+		num := strconv.Itoa(i)
+		preCards[num] = NewCard(num, w, h, ts, bgc, txc)
 	}
-	return NewInput(cs, w, h, ts, m, bgc, txc)
+	return &Input{w, h, ts, m, bgc, txc, cs, preCards, []int{}}
 }
 
 func NewEmptyInput(w, h, ts, m int, bgc, txc color.Color) *Input {
@@ -45,42 +43,45 @@ func (cs *Input) Bounds() (int, int) {
 }
 
 func (cs *Input) Addble() bool {
-	return len(cs.Input) < maxLength
+	return len(cs.cards) < maxLength
 }
 
 func (cs *Input) Add(t string) {
 	if !cs.Addble() {
 		return
 	}
-	cs.Input = append(cs.Input, NewCard(t, cs.w, cs.h, cs.txtSize, HistoryFrameColor, color.Black))
+	num, _ := strconv.Atoi(t)
+	cs.numbers = append(cs.numbers, num)
+	cs.cards = append(cs.cards, cs.preCards[t])
 }
 
 func (cs *Input) Clear() {
-	cs.Input = []*Card{}
+	cs.numbers = []int{}
+	cs.cards = []*Card{}
+}
+
+func (cs *Input) EndNumber() int {
+	if len(cs.numbers) == 0 {
+		return -1
+	}
+	return cs.numbers[len(cs.numbers)-1]
 }
 
 func (cs *Input) Numbers() []int {
-	ns := make([]int, len(cs.Input))
-	for i, c := range cs.Input {
-		num, _ := strconv.Atoi(c.Text())
-		ns[i] = num
-	}
-	return ns
+	return cs.numbers
 }
 
 func (cs *Input) Draw(screen *ebiten.Image, x, y int) {
 	w, h := cs.Bounds()
+	harfScreenWidth := screen.Bounds().Dx() / 2
 	fsize := h * 3 / 50
-	NewRounded(w+4*fsize, h+4*fsize, color.White).Draw(screen, x-2*fsize, y-2*fsize)
-	NewRounded(w+2*fsize, h+2*fsize, HistoryFrameColor).Draw(screen, x-fsize, y-fsize)
-	// for i, c := range cs.Input {
-	// 	c.Draw(screen, x+i*(cs.w+cs.margin), y)
-	// }
+	NewRounded(w+4*fsize, h+4*fsize, color.White).Draw(screen, x-2*fsize-w/2+harfScreenWidth, y-2*fsize)
+	NewRounded(w+2*fsize, h+2*fsize, HistoryFrameColor).Draw(screen, x-fsize-w/2+harfScreenWidth, y-fsize)
 	for i := 0; i < maxLength; i++ {
-		if i < len(cs.Input) {
-			cs.Input[i].Draw(screen, x+i*(cs.w+cs.margin), y)
+		if i < len(cs.cards) {
+			cs.cards[i].Draw(screen, x+i*(cs.w+cs.margin)-w/2+harfScreenWidth, y)
 			continue
 		}
-		NewCard("-", cs.w, cs.h, cs.txtSize, cs.bgc, cs.txc).Draw(screen, x+i*(cs.w+cs.margin), y)
+		NewCard("-", cs.w, cs.h, cs.txtSize, cs.bgc, cs.txc).Draw(screen, x+i*(cs.w+cs.margin)-w/2+harfScreenWidth, y)
 	}
 }
