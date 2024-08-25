@@ -120,11 +120,13 @@ func (g *Game) Update() error {
 		wmargin := w * 12 / 750
 		hmargin := h * 16 / 1334
 		g.tenkey = drawable.NewTenkey(g.numberButtons, w*12/750, h*16/1334, w, h*25/40+(h*3/10)*19/40)
-		g.enterKey = drawable.NewEffectButton("決定", w*330/750, h*90/1334, h*80/1334, drawable.GrayColor, color.White, w*110/750+wmargin, h*25/40+(h*3/10)*19/40+h*180/1334+2*hmargin, g.inputField)
-		g.deleteKey = drawable.NewEffectButton("←", w*110/750, h*90/1334, h*80/1334, drawable.GrayColor, color.White, w*440/750+3*wmargin, h*25/40+(h*3/10)*19/40+h*180/1334+2*hmargin, g.inputField)
+		g.enterKey = drawable.NewEffectButton("決定", w*330/750, h*90/1334, h*80/1334, drawable.HistoryBackgroundColor, drawable.GrayColor, color.White, w*110/750+wmargin, h*25/40+(h*3/10)*19/40+h*180/1334+2*hmargin, g.inputField)
+		g.deleteKey = drawable.NewEffectButton("←", w*110/750, h*90/1334, h*80/1334, drawable.HistoryBackgroundColor, drawable.GrayColor, color.White, w*440/750+3*wmargin, h*25/40+(h*3/10)*19/40+h*180/1334+2*hmargin, g.inputField)
+		g.enterKey.Disable()
 		g.inputBoard = drawable.NewInputBoard(w, h*15/40, drawable.HistoryFrameColor)
 		g.message = drawable.NewMessage("対戦相手を探してください", w*30/750, screenWidth/2, w*30/750, drawable.MessageColor, drawable.HistoryFrameColor) // y :=  screenHeight*25/40+(h*4/10)/20
 		g.resultText = drawable.NewText("", w*100/750, color.White)
+		g.searchButton = drawable.NewEffectButton("対戦相手を探す", w*600/750, h*90/1334, h*80/1334, drawable.HistoryBackgroundColor, drawable.GrayColor, color.White, w/2, h*25/40+(h*3/10)*19/40, g.inputField)
 		go func(ch chan *entity.Hand) {
 			h := <-ch
 			g.playerBoard.MyHand().SetHand(h)
@@ -134,9 +136,9 @@ func (g *Game) Update() error {
 
 	switch g.mode {
 	case ModeInit:
-		g.searchButton = drawable.NewEffectButton("対戦相手を探す", w*600/750, h*90/1334, h*80/1334, drawable.GrayColor, color.White, w*110/750, h*25/40+(h*3/10)*19/40+h*180/1334, g.inputField)
-		// ボタンのクリック判定
 		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+			g.changeMode = true
+			g.mode = ModeWaiting
 			g.message.SetMessage("対戦相手を探しています...")
 			if g.searchButton.In(ebiten.CursorPosition()) {
 				go conn.Matching(g.cch, g.hch, g.gch, g.qch, g.tch, g.tich, g.jch)
@@ -209,19 +211,29 @@ func (g *Game) Update() error {
 	case ModePlaying:
 		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 			pushedButton := g.tenkey.WhichButtonByPosition(ebiten.CursorPosition())
+			if !g.isMyTurn {
+				return nil
+			}
 			if pushedButton != nil && g.inputField.Addble() {
 				pushedButton.Push()
 				pushedButton.Disable()
+				if !g.inputField.Addble() {
+					g.enterKey.Enable()
+				}
 				g.isJustPushed = true
 				return nil
 			}
-			if g.enterKey.In(ebiten.CursorPosition()) {
+			if g.enterKey.In(ebiten.CursorPosition()) && !g.inputField.Addble() {
+				if g.inputField.Addble() {
+					return nil
+				}
 				g.enterKey.Send(func(ns []int) {
 					conn.Send(g.gch, ns)
 				})
 				for _, nb := range g.numberButtons {
 					nb.Enable()
 				}
+				g.enterKey.Disable()
 				g.isJustCleared = true
 				return nil
 			}
@@ -230,6 +242,7 @@ func (g *Game) Update() error {
 				for _, nb := range g.numberButtons {
 					nb.Enable()
 				}
+				g.enterKey.Disable()
 				g.isJustCleared = true
 				return nil
 			}
@@ -263,16 +276,20 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	// インタラクションな描画
 	switch g.mode {
 	case ModeInit:
-		g.searchButton.Draw(g.tmp)
+		g.searchButton.DrawCenter(g.tmp)
+	case ModeWaiting:
+		g.changeMode = false
 	case ModePlaying:
 		if g.isJustPushed {
 			g.inputField.Draw(g.tmp, 0, screenHeight*27/40)
 			g.tenkey.DrawPart(g.tmp, g.inputField.EndNumber())
+			g.enterKey.Draw(g.tmp)
 			g.isJustPushed = false
 		}
 		if g.isJustCleared {
 			g.inputField.Draw(g.tmp, 0, screenHeight*27/40)
 			g.tenkey.Draw(g.tmp)
+			g.enterKey.Draw(g.tmp)
 			g.isJustCleared = false
 		}
 		if g.changeMode {
