@@ -248,7 +248,11 @@ func (g *Game) Update() error {
 			}
 		}
 	case ModeFinished:
-
+		go func(ch chan *entity.Hand) {
+			h := <-ch
+			g.playerBoard.EmHand().SetHand(h)
+			g.changePlayerBoard = true
+		}(g.hch)
 	}
 
 	return nil

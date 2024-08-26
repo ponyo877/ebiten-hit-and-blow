@@ -335,6 +335,7 @@ func onMessage(dc *webrtc.DataChannel, hch chan *entity.Hand, gch chan *entity.G
 			finishProcess(dc, board, finChan)
 			return
 		case "expose":
+			hch <- entity.NewHandFromText(message.MyHand)
 			// setHand(false, entity.NewHandFromText(message.MyHand))
 			return
 		default:
