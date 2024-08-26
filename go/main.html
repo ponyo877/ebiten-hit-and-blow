@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.4/pako.min.js"></script>
+    <script src="/go/wasm_exec.js"></script>
+    <script>
+        // Polyfill
+        if (!WebAssembly.instantiateStreaming) {
+            WebAssembly.instantiateStreaming = async (resp, importObject) => {
+                const source = await (await resp).arrayBuffer();
+                return await WebAssembly.instantiate(source, importObject);
+            };
+        }
+        async function loadWasm() {
+            const go = new Go();
+            const response = await fetch("/go/demo.wasm.gz");
+            const compressedData = await response.arrayBuffer();
+            const decompressedData = pako.ungzip(new Uint8Array(compressedData)).buffer;
+            const result = await WebAssembly.instantiate(decompressedData, go.importObject);
+            document.getElementById('loading').remove();
+            go.run(result.instance);
+        }
+        loadWasm();
+        // WebAssembly.instantiateStreaming(fetch("/go/demo.wasm"), go.importObject).then(result => {
+        //     go.run(result.instance);
+        // });
+    </script>
+    <h1 id="loading">Loading...</h1>
+</body>
+
+</html>

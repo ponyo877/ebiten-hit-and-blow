@@ -215,150 +215,6 @@ func Matching(cch chan struct{}, hch chan *entity.Hand, gch chan *entity.Guess, 
 		log.Printf("conn.Connect();")
 		select {}
 	}
-	// go func() {
-	// 	ws, _, err := websocket.Dial(context.Background(), mmURL.String(), nil)
-	// 	if err != nil {
-	// 		log.Fatal(err)
-	// 	}
-	// 	defer ws.Close(websocket.StatusNormalClosure, "close connection")
-
-	// 	if err := ws.Write(context.Background(), websocket.MessageText, reqMsg); err != nil {
-	// 		log.Fatal(err)
-	// 	}
-	// 	logElem("[Sys]: Waiting match...\n")
-	// 	for {
-	// 		if err := wsjson.Read(context.Background(), ws, &resMsg); err != nil {
-	// 			log.Fatal(err)
-	// 			break
-	// 		}
-	// 		if resMsg.Type == "MATCH" {
-	// 			break
-	// 		}
-	// 	}
-	// 	ws.Close(websocket.StatusNormalClosure, "close connection")
-	// 	if resMsg.Type == "MATCH" {
-
-	// 		conn = ayame.NewConnection(signalingURL.String(), resMsg.RoomID, ayame.DefaultOptions(), false, false)
-	// 		conn.OnOpen(func(metadata *interface{}) {
-	// 			var err error
-	// 			dc, err = conn.CreateDataChannel("matchmaking-hit-and-blow", nil)
-	// 			if errors.Is(err, ayame.ErrorClientDoesNotExist) {
-	// 				return
-	// 			}
-	// 			if err != nil {
-	// 				log.Printf("CreateDataChannel error: %v", err)
-	// 				return
-	// 			}
-
-	// 			log.Printf("CreateDataChannel: label=%s", dc.Label())
-	// 			go func(ch chan *entity.Hand) {
-	// 				rand.NewSource(time.Now().UnixNano())
-	// 				seed := rand.Int()
-
-	// 				initTurn := entity.NewTurnBySeed(seed)
-	// 				myHand := entity.NewHandBySeed(seed)
-	// 				// setHand(true, myHand)
-	// 				ch <- myHand
-	// 				log.Printf("myHand(opener): %v", myHand)
-	// 				board.Start(myHand, initTurn, 1)
-	// 				if board.IsMyTurnInit() {
-	// 					log.Printf("YOU FIRST !!!")
-	// 					// setTurn("It's Your Turn !")
-	// 				}
-	// 				turn := int(initTurn)
-	// 				// myRate, opRate, err := getRating(ratingURL, userID, resMsg.UserID)
-	// 				// if err != nil {
-	// 				// 	log.Printf("failed to get rating: %v", err)
-	// 				// 	return
-	// 				// }
-	// 				// setProfile(userID, resMsg.UserID, myRate, opRate)
-	// 				startMsg := Message{Type: "start", Turn: &turn}
-	// 				by, _ := json.Marshal(startMsg)
-	// 				time.Sleep(10 * time.Second)
-	// 				log.Printf("startMsg(opener): %v", string(by))
-	// 				if err := dc.SendText(string(by)); err != nil {
-	// 					log.Printf("failed to send startMsg: %v", err)
-	// 					return
-	// 				}
-	// 			}(hch)
-	// 			finChan := make(chan struct{})
-	// 			dc.OnMessage(onMessage(dc, hch, gch, finChan, board))
-	// 			go func() {
-	// 				select {
-	// 				case <-finChan:
-	// 					if err := updateRating(ratingURL, resMsg.RoomID, userID, hash, 1, board.Result()); err != nil {
-	// 						log.Printf("failed to update rating: %v", err)
-	// 						return
-	// 					}
-	// 				}
-	// 			}()
-	// 		})
-
-	// 		conn.OnConnect(func() {
-	// 			logElem("[Sys]: Matching! Start P2P chat not via server\n")
-	// 			conn.CloseWebSocketConnection()
-	// 			connected <- true
-	// 		})
-
-	// 		conn.OnDataChannel(func(c *webrtc.DataChannel) {
-	// 			log.Printf("OnDataChannel: label=%s", c.Label())
-	// 			if dc == nil {
-	// 				dc = c
-	// 			}
-	// 			log.Println("ready to recieve")
-	// 			// myRate, opRate, err := getRating(ratingURL, userID, resMsg.UserID)
-	// 			// if err != nil {
-	// 			// 	log.Printf("failed to get rating: %v", err)
-	// 			// 	return
-	// 			// }
-	// 			// setProfile(userID, resMsg.UserID, myRate, opRate)
-	// 			finChan := make(chan struct{})
-	// 			dc.OnMessage(onMessage(dc, hch, gch, finChan, board))
-	// 			go func() {
-	// 				select {
-	// 				case <-finChan:
-	// 					if err := updateRating(ratingURL, resMsg.RoomID, userID, hash, 2, board.Result()); err != nil {
-	// 						log.Printf("failed to update rating: %v", err)
-	// 						return
-	// 					}
-	// 				}
-	// 			}()
-	// 		})
-
-	// 		if err := conn.Connect(); err != nil {
-	// 			log.Fatal("failed to connect Ayame", err)
-	// 		}
-	// 		log.Printf("conn.Connect();")
-	// 		select {
-	// 		case <-connected:
-	// 			return
-	// 		}
-	// 	}
-	// }()
-	// select {}
-
-	// js.Global().Set("SendGuess", js.FuncOf(func(_ js.Value, _ []js.Value) interface{} {
-	// 	go func() {
-	// 		el := getElementByID("input-number")
-	// 		message := el.Get("value").String()
-	// 		if message == "" {
-	// 			js.Global().Call("alert", "Message must not be empty")
-	// 			return
-	// 		}
-	// 		if dc == nil {
-	// 			return
-	// 		}
-
-	// 		ch <- entity.NewGuessFromText(message)
-	// 		logElem(fmt.Sprintf("[You]: %s\n", message))
-	// 		el.Set("value", "")
-	// 		for i := 0; i <= 9; i++ {
-	// 			s := strconv.Itoa(i)
-	// 			getElementByID("input-"+s).Set("disabled", false)
-	// 		}
-	// 	}()
-	// 	return js.Undefined()
-	// }))
 }
 
 func Send(ch chan *entity.Guess, numbers []int) {
@@ -394,7 +250,6 @@ func onMessage(dc *webrtc.DataChannel, hch chan *entity.Hand, gch chan *entity.G
 			log.Printf("failed to unmarshal: %v", err)
 			return
 		}
-		// logElem(fmt.Sprintf("[Any]: %s\n", msg.Data))
 		switch message.Type {
 		case "start":
 			// 非開室者Only: GameStart処理
@@ -422,10 +277,10 @@ func onMessage(dc *webrtc.DataChannel, hch chan *entity.Hand, gch chan *entity.G
 					return
 				}
 				log.Printf("startMsg(unopener): %v", string(by))
-				setTurn("It's Opponent's Turn, Waiting ...")
+				// setTurn("It's Opponent's Turn, Waiting ...")
 				return
 			}
-			setTurn("It's Your Turn !")
+			// setTurn("It's Your Turn !")
 			// guess送信処理に続く
 		case "guess":
 			if board.IsMyTurn() {
@@ -434,7 +289,7 @@ func onMessage(dc *webrtc.DataChannel, hch chan *entity.Hand, gch chan *entity.G
 			// 自分ターンへ遷移
 			board.ToggleTurn()
 			tch <- true
-			setTurn("It's Your Turn !")
+			// setTurn("It's Your Turn !")
 			guess := entity.NewGuessFromText(message.Guess)
 			ans := board.CalcAnswer(guess)
 			hit, blow := ans.Hit(), ans.Blow()
@@ -480,7 +335,7 @@ func onMessage(dc *webrtc.DataChannel, hch chan *entity.Hand, gch chan *entity.G
 			finishProcess(dc, board, finChan)
 			return
 		case "expose":
-			setHand(false, entity.NewHandFromText(message.MyHand))
+			// setHand(false, entity.NewHandFromText(message.MyHand))
 			return
 		default:
 			return
@@ -531,7 +386,7 @@ func onMessage(dc *webrtc.DataChannel, hch chan *entity.Hand, gch chan *entity.G
 		// 相手ターンへ遷移
 		tch <- false
 		board.ToggleTurn()
-		setTurn("It's Opponent's Turn, Waiting...")
+		// setTurn("It's Opponent's Turn, Waiting...")
 		if err := dc.SendText(string(by)); err != nil {
 			log.Printf("failed to send guessMsg: %v", err)
 			return
@@ -545,73 +400,8 @@ func logElem(msg string) {
 	// el.Set("innerHTML", el.Get("innerHTML").String()+msg)
 }
 
-// func getElementByID(id string) js.Value {
-// 	return js.Global().Get("document").Call("getElementById", id)
-// }
-
-func setJudge(judge entity.JudgeStatus) {
-	// myJudge := js.Global().Get("document").Call("getElementById", "my-judge")
-	// switch judge {
-	// case entity.Win:
-	// 	myJudge.Set("id", "win")
-	// 	myJudge.Set("innerHTML", "WIN")
-	// case entity.Lose:
-	// 	myJudge.Set("id", "lose")
-	// 	myJudge.Set("innerHTML", "LOSE")
-	// case entity.Draw:
-	// 	myJudge.Set("innerHTML", "DRAW")
-	// default:
-	// 	return
-	// }
-}
-
-func setScore(board *entity.Board, guess string, hit int, blow int) {
-	// var scores js.Value
-	// doc := js.Global().Get("document").Call("getElementsByClassName", "board")
-	// scores = doc.Index(0).Call("querySelector", "table").Get("tBodies").Index(0).Get("rows")
-	// if board.IsMyTurn() {
-	// 	scores = doc.Index(1).Call("querySelector", "table").Get("tBodies").Index(0).Get("rows")
-	// }
-	// turnCount := board.TurnCount()
-	// log.Printf("board.TurnCount() %d", board.TurnCount())
-	// guessCell := scores.Index(turnCount).Get("cells").Index(0)
-	// hitCell := scores.Index(turnCount).Get("cells").Index(1)
-	// blowCell := scores.Index(turnCount).Get("cells").Index(2)
-	// guessCell.Set("innerHTML", guess)
-	// hitCell.Set("innerHTML", hit)
-	// blowCell.Set("innerHTML", blow)
-}
-
-func setTimer(second int) {
-	// timer := js.Global().Get("document").Call("getElementById", "timer")
-	// timer.Set("innerHTML", second)
-}
-
-func setTurn(message string) {
-	// turnElem := js.Global().Get("document").Call("getElementById", "display-turn")
-	// turnElem.Set("innerHTML", message)
-}
-
-func setHand(isMyHand bool, hand *entity.Hand) {
-	// handID := "op-hand"
-	// if isMyHand {
-	// 	handID = "my-hand"
-	// }
-	// for i, number := range *hand {
-	// 	handElem := js.Global().Get("document").Call("getElementById", fmt.Sprintf("%s-%d", handID, i+1))
-	// 	handElem.Set("innerHTML", number)
-	// }
-}
-
-func setProfile(myID, opID string, myRate, opRate int) {
-	// myProfile := js.Global().Get("document").Call("getElementById", "my-profile")
-	// opProfile := js.Global().Get("document").Call("getElementById", "op-profile")
-	// myProfile.Set("innerHTML", fmt.Sprintf("%s(r%d)", myID, myRate))
-	// opProfile.Set("innerHTML", fmt.Sprintf("%s(r%d)", opID, opRate))
-}
-
 func finishProcess(dc *webrtc.DataChannel, board *entity.Board, finChan chan struct{}) {
-	setTurn("Finish !!!")
+	// setTurn("Finish !!!")
 	exposeMsg := Message{Type: "expose", MyHand: board.MyHandText()}
 	by, _ := json.Marshal(exposeMsg)
 	if err := dc.SendText(string(by)); err != nil {

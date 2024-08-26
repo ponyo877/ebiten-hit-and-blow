@@ -44,9 +44,6 @@ func (t *Text) SetColor(c color.Color) {
 func (t *Text) font() *text.GoTextFace {
 	var source *text.GoTextFaceSource
 	source, _ = text.NewGoTextFaceSource(bytes.NewReader(fonts.MPlus1pRegular_ttf))
-	// if _, err := strconv.Atoi(t.text); err == nil {
-	// 	source, _ = text.NewGoTextFaceSource(bytes.NewReader(static.NumberFont))
-	// }
 	return &text.GoTextFace{
 		Source: source,
 		Size:   float64(t.size),

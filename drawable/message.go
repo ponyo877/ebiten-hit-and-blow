@@ -3,12 +3,10 @@ package drawable
 import (
 	"bytes"
 	"image/color"
-	"strconv"
 
 	"github.com/hajimehoshi/ebiten/examples/resources/fonts"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
-	"github.com/ponyo877/ebiten-hit-and-blow/static"
 )
 
 type Message struct {
@@ -41,9 +39,6 @@ func (t *Message) SetMessage(text string) {
 func (t *Message) font() *text.GoTextFace {
 	var source *text.GoTextFaceSource
 	source, _ = text.NewGoTextFaceSource(bytes.NewReader(fonts.MPlus1pRegular_ttf))
-	if _, err := strconv.Atoi(t.text); err == nil {
-		source, _ = text.NewGoTextFaceSource(bytes.NewReader(static.NumberFont))
-	}
 	return &text.GoTextFace{
 		Source: source,
 		Size:   float64(t.size),

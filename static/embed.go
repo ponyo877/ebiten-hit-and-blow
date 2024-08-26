@@ -9,6 +9,4 @@ var (
 	Me []byte
 	//go:embed enemy.png
 	Enemy []byte
-	//go:embed number_font.otf
-	NumberFont []byte
 )
