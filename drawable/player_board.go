@@ -40,6 +40,14 @@ func (pb *PlayerBoard) EmInitTurn() *Card {
 	return pb.emInitTurn
 }
 
+func (pb *PlayerBoard) MyPlayer() *Player {
+	return pb.myPlayer
+}
+
+func (pb *PlayerBoard) EmPlayer() *Player {
+	return pb.emPlayer
+}
+
 func (pb *PlayerBoard) Draw(screen *ebiten.Image, x, y int) {
 	pb.myBase.Fill()
 	pb.myPlayer.Draw(pb.myBase.Image(), 0, 0)

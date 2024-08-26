@@ -54,11 +54,16 @@ func (b *EffectButton) In(x, y int) bool {
 	return x >= b.x && x <= b.x+w && y >= b.y && y <= b.y+h
 }
 
+func (b *EffectButton) InWithCenter(x, y int) bool {
+	w, h := b.Bounds()
+	return x >= b.x-w/2 && x <= b.x+w/2 && y >= b.y && y <= b.y+h
+}
+
 func (b *EffectButton) Draw(screen *ebiten.Image) {
 	b.card.Draw(screen, b.x, b.y)
 }
 
 func (b *EffectButton) DrawCenter(screen *ebiten.Image) {
 	w, _ := b.Bounds()
-	b.card.Draw(screen, screen.Bounds().Dx()/2-w/2, b.y)
+	b.card.Draw(screen, b.x-w/2, b.y)
 }

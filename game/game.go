@@ -1,3 +1,6 @@
+//go:build js && wasm
+// +build js,wasm
+
 package game
 
 import (
@@ -35,6 +38,7 @@ type Game struct {
 	tch                chan bool
 	tich               chan int
 	jch                chan entity.JudgeStatus
+	rch                chan *entity.Rating
 	playerBoard        *drawable.PlayerBoard
 	historyBoard       *drawable.HistoryBoard
 	inputBoard         *drawable.InputBoard
@@ -75,6 +79,7 @@ func (g *Game) Start() error {
 	g.tch = make(chan bool)
 	g.tich = make(chan int)
 	g.jch = make(chan entity.JudgeStatus)
+	g.rch = make(chan *entity.Rating)
 	return ebiten.RunGame(g)
 }
 
@@ -85,8 +90,8 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeigh
 func (g *Game) Update() error {
 	w, h := screenWidth, screenHeight
 	if g.tmp == nil {
-		name := "NoName"
-		rate := 1500
+		name := ""
+		rate := ""
 		reader := bytes.NewReader(static.Me)
 		img, _, _ := image.Decode(reader)
 		myIcon := drawable.NewIcon(w*90/750, w*90/750, img)
@@ -137,11 +142,11 @@ func (g *Game) Update() error {
 	switch g.mode {
 	case ModeInit:
 		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-			g.changeMode = true
-			g.mode = ModeWaiting
-			g.message.SetMessage("対戦相手を探しています...")
-			if g.searchButton.In(ebiten.CursorPosition()) {
-				go conn.Matching(g.cch, g.hch, g.gch, g.qch, g.tch, g.tich, g.jch)
+			if g.searchButton.InWithCenter(ebiten.CursorPosition()) {
+				g.changeMode = true
+				g.mode = ModeWaiting
+				g.message.SetMessage("対戦相手を探しています...")
+				go conn.Matching(g.cch, g.hch, g.gch, g.qch, g.tch, g.tich, g.jch, g.rch)
 				go func(ch chan struct{}) {
 					<-ch
 					g.changeMode = true
@@ -160,7 +165,7 @@ func (g *Game) Update() error {
 						g.changeHistoryBoard = true
 					}
 				}(g.qch)
-				go func(ch chan bool) {
+				go func(ch chan bool, rch chan *entity.Rating) {
 					for {
 						g.isMyTurn = <-ch
 						g.timer.Set(60)
@@ -172,6 +177,12 @@ func (g *Game) Update() error {
 							}
 							g.playerBoard.MyInitTurn().SetText(myTurnText)
 							g.playerBoard.EmInitTurn().SetText(emTurnText)
+							myr := <-rch
+							emr := <-rch
+							g.playerBoard.MyPlayer().SetName(myr.ID())
+							g.playerBoard.MyPlayer().SetRate(myr.Rating())
+							g.playerBoard.EmPlayer().SetName(myr.ID())
+							g.playerBoard.EmPlayer().SetRate(emr.Rating())
 							g.changePlayerBoard = true
 						}
 						g.message.SetMessage("相手は考えています...")
@@ -182,7 +193,7 @@ func (g *Game) Update() error {
 						g.changeTimer = true
 						log.Println("g.isMyTurn", g.isMyTurn)
 					}
-				}(g.tch)
+				}(g.tch, g.rch)
 				go func(ch chan int) {
 					for {
 						g.timer.Set(<-ch)
@@ -261,9 +272,9 @@ func (g *Game) Update() error {
 func (g *Game) Draw(screen *ebiten.Image) {
 	if g.tmp == nil || g.changeMode {
 		g.tmp = ebiten.NewImage(screenWidth, screenHeight)
-		if !g.changePlayerBoard {
-			g.playerBoard.Draw(g.tmp, 0, 0)
-		}
+		// if !g.changePlayerBoard {
+		g.playerBoard.Draw(g.tmp, 0, 0)
+		// }
 		if !g.changeHistoryBoard {
 			g.historyBoard.Draw(g.tmp, 0, screenHeight*2/10)
 		}

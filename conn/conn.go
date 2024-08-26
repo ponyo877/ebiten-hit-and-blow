@@ -1,3 +1,6 @@
+//go:build js && wasm
+// +build js,wasm
+
 package conn
 
 import (
@@ -13,6 +16,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"syscall/js"
 	"time"
 
 	"github.com/pion/webrtc/v3"
@@ -64,25 +68,25 @@ type updateRatingResMsg struct {
 	Result   string `json:"result"`
 }
 
-func Matching(cch chan struct{}, hch chan *entity.Hand, gch chan *entity.Guess, qch chan *entity.QA, tch chan bool, tich chan int, jch chan entity.JudgeStatus) {
+func Matching(cch chan struct{}, hch chan *entity.Hand, gch chan *entity.Guess, qch chan *entity.QA, tch chan bool, tich chan int, jch chan entity.JudgeStatus, rch chan *entity.Rating) {
 	mmURL := url.URL{Scheme: wsScheme, Host: matchmakingOrigin, Path: "/matchmaking"}
 	signalingURL := url.URL{Scheme: wsScheme, Host: signalingOrigin, Path: "/signaling"}
 	ratingURL := url.URL{Scheme: httpScheme, Host: ratingOrigin, Path: "/rating"}
 
 	now := time.Now()
-	// window := js.Global().Get("window")
-	// localStorage := window.Get("localStorage")
+	window := js.Global().Get("window")
+	localStorage := window.Get("localStorage")
 
 	var userID, hash string
-	// userIDjs := localStorage.Get("userID")
-	// userID = userIDjs.String()
-	// hash = localStorage.Get("hash").String()
-	// if userIDjs.Equal(js.Undefined()) {
-	userID = shortHash(now)
-	// localStorage.Set("userID", userID)
-	// localStorage.Set("hash", sha256Hash(solt+userID+solt))
-	hash = sha256Hash(solt + userID + solt)
-	// }
+	userIDjs := localStorage.Get("userID")
+	userID = userIDjs.String()
+	hash = localStorage.Get("hash").String()
+	if userIDjs.Equal(js.Undefined()) {
+		userID = shortHash(now)
+		localStorage.Set("userID", userID)
+		localStorage.Set("hash", sha256Hash(solt+userID+solt))
+		hash = sha256Hash(solt + userID + solt)
+	}
 	reqMsg, err := json.Marshal(mmReqMsg{
 		UserID:    userID,
 		CreatedAt: now,
@@ -92,7 +96,6 @@ func Matching(cch chan struct{}, hch chan *entity.Hand, gch chan *entity.Guess, 
 	}
 	var resMsg mmResMsg
 	var dc *webrtc.DataChannel
-	// ch := make(chan *entity.Guess)
 	defer func() {
 		if dc != nil {
 			dc.Close()
@@ -135,13 +138,12 @@ func Matching(cch chan struct{}, hch chan *entity.Hand, gch chan *entity.Guess, 
 			}
 
 			log.Printf("CreateDataChannel: label=%s", dc.Label())
-			go func(hc chan *entity.Hand, cc chan struct{}, tc chan bool) {
+			go func(hc chan *entity.Hand, cc chan struct{}, tc chan bool, rc chan *entity.Rating) {
 				rand.NewSource(time.Now().UnixNano())
 				seed := rand.Int()
 
 				initTurn := entity.NewTurnBySeed(seed)
 				myHand := entity.NewHandBySeed(seed)
-				// setHand(true, myHand)
 				hc <- myHand
 				log.Println("initTurn.IsMyTurn(): ", initTurn.IsMyTurn())
 				tc <- initTurn.IsMyTurn()
@@ -149,14 +151,15 @@ func Matching(cch chan struct{}, hch chan *entity.Hand, gch chan *entity.Guess, 
 				board.Start(myHand, initTurn, 1)
 				if board.IsMyTurnInit() {
 					log.Printf("YOU FIRST !!!")
-					// setTurn("It's Your Turn !")
 				}
 				turn := int(initTurn)
-				// myRate, opRate, err := getRating(ratingURL, userID, resMsg.UserID)
-				// if err != nil {
-				// 	log.Printf("failed to get rating: %v", err)
-				// 	return
-				// }
+				myRate, opRate, err := getRating(ratingURL, userID, resMsg.UserID)
+				if err != nil {
+					log.Printf("failed to get rating: %v", err)
+					return
+				}
+				rc <- entity.NewRating(userID, myRate)
+				rc <- entity.NewRating(resMsg.UserID, opRate)
 				// setProfile(userID, resMsg.UserID, myRate, opRate)
 				startMsg := Message{Type: "start", Turn: &turn}
 				by, _ := json.Marshal(startMsg)
@@ -167,7 +170,7 @@ func Matching(cch chan struct{}, hch chan *entity.Hand, gch chan *entity.Guess, 
 					log.Printf("failed to send startMsg: %v", err)
 					return
 				}
-			}(hch, cch, tch)
+			}(hch, cch, tch, rch)
 			finChan := make(chan struct{})
 			dc.OnMessage(onMessage(dc, hch, gch, qch, tch, tich, jch, finChan, board))
 			go func() {
@@ -192,12 +195,15 @@ func Matching(cch chan struct{}, hch chan *entity.Hand, gch chan *entity.Guess, 
 				dc = c
 			}
 			log.Println("ready to recieve")
-			// myRate, opRate, err := getRating(ratingURL, userID, resMsg.UserID)
-			// if err != nil {
-			// 	log.Printf("failed to get rating: %v", err)
-			// 	return
-			// }
-			// setProfile(userID, resMsg.UserID, myRate, opRate)
+			go func(rc chan *entity.Rating) {
+				myRate, opRate, err := getRating(ratingURL, userID, resMsg.UserID)
+				if err != nil {
+					log.Printf("failed to get rating: %v", err)
+					return
+				}
+				rc <- entity.NewRating(userID, myRate)
+				rc <- entity.NewRating(resMsg.UserID, opRate)
+			}(rch)
 			finChan := make(chan struct{})
 			dc.OnMessage(onMessage(dc, hch, gch, qch, tch, tich, jch, finChan, board))
 			go func() {

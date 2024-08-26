@@ -323,3 +323,20 @@ func (b *Board) Result() string {
 	}
 	return "0"
 }
+
+type Rating struct {
+	id     string
+	rating int
+}
+
+func NewRating(id string, rating int) *Rating {
+	return &Rating{id, rating}
+}
+
+func (r *Rating) ID() string {
+	return r.id
+}
+
+func (r *Rating) Rating() int {
+	return r.rating
+}
