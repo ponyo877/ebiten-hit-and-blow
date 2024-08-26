@@ -181,7 +181,7 @@ func (g *Game) Update() error {
 							emr := <-rch
 							g.playerBoard.MyPlayer().SetName(myr.ID())
 							g.playerBoard.MyPlayer().SetRate(myr.Rating())
-							g.playerBoard.EmPlayer().SetName(myr.ID())
+							g.playerBoard.EmPlayer().SetName(emr.ID())
 							g.playerBoard.EmPlayer().SetRate(emr.Rating())
 							g.changePlayerBoard = true
 						}
@@ -272,9 +272,9 @@ func (g *Game) Update() error {
 func (g *Game) Draw(screen *ebiten.Image) {
 	if g.tmp == nil || g.changeMode {
 		g.tmp = ebiten.NewImage(screenWidth, screenHeight)
-		// if !g.changePlayerBoard {
-		g.playerBoard.Draw(g.tmp, 0, 0)
-		// }
+		if !g.changePlayerBoard {
+			g.playerBoard.Draw(g.tmp, 0, 0)
+		}
 		if !g.changeHistoryBoard {
 			g.historyBoard.Draw(g.tmp, 0, screenHeight*2/10)
 		}

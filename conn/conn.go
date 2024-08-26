@@ -160,7 +160,6 @@ func Matching(cch chan struct{}, hch chan *entity.Hand, gch chan *entity.Guess, 
 				}
 				rc <- entity.NewRating(userID, myRate)
 				rc <- entity.NewRating(resMsg.UserID, opRate)
-				// setProfile(userID, resMsg.UserID, myRate, opRate)
 				startMsg := Message{Type: "start", Turn: &turn}
 				by, _ := json.Marshal(startMsg)
 				<-cc
@@ -283,10 +282,8 @@ func onMessage(dc *webrtc.DataChannel, hch chan *entity.Hand, gch chan *entity.G
 					return
 				}
 				log.Printf("startMsg(unopener): %v", string(by))
-				// setTurn("It's Opponent's Turn, Waiting ...")
 				return
 			}
-			// setTurn("It's Your Turn !")
 			// guess送信処理に続く
 		case "guess":
 			if board.IsMyTurn() {
@@ -295,7 +292,6 @@ func onMessage(dc *webrtc.DataChannel, hch chan *entity.Hand, gch chan *entity.G
 			// 自分ターンへ遷移
 			board.ToggleTurn()
 			tch <- true
-			// setTurn("It's Your Turn !")
 			guess := entity.NewGuessFromText(message.Guess)
 			ans := board.CalcAnswer(guess)
 			hit, blow := ans.Hit(), ans.Blow()
@@ -303,10 +299,8 @@ func onMessage(dc *webrtc.DataChannel, hch chan *entity.Hand, gch chan *entity.G
 			by, _ := json.Marshal(ansMsg)
 			board.CountTurn()
 			board.AddOpQA(entity.NewQA(guess, ans))
-			// setScore(board, guess.View(), hit, blow)
 			qch <- entity.NewQA(guess, ans)
 			j := board.Judge()
-			// setJudge(j)
 			log.Printf("ansMsg: %v", string(by))
 			if err := dc.SendText(string(by)); err != nil {
 				log.Printf("failed to send ansMsg: %v", err)
@@ -325,10 +319,8 @@ func onMessage(dc *webrtc.DataChannel, hch chan *entity.Hand, gch chan *entity.G
 			ans := entity.NewAnswer(*message.Hit, *message.Blow)
 			board.CountTurn()
 			board.AddMyQA(entity.NewQA(recentGuess, ans))
-			// setScore(board, recentGuess.View(), ans.Hit(), ans.Blow())
 			qch <- entity.NewQA(recentGuess, ans)
 			j := board.Judge()
-			// setJudge(j)
 			if j != entity.NotYet {
 				jch <- j
 				finishProcess(dc, board, finChan)
@@ -337,12 +329,10 @@ func onMessage(dc *webrtc.DataChannel, hch chan *entity.Hand, gch chan *entity.G
 			return
 		case "timeout":
 			jch <- entity.Win
-			// setJudge(entity.Win)
 			finishProcess(dc, board, finChan)
 			return
 		case "expose":
 			hch <- entity.NewHandFromText(message.MyHand)
-			// setHand(false, entity.NewHandFromText(message.MyHand))
 			return
 		default:
 			return
@@ -353,7 +343,6 @@ func onMessage(dc *webrtc.DataChannel, hch chan *entity.Hand, gch chan *entity.G
 
 		// 60sの間にguessを送信する処理
 		timeout := 60
-		// gracePeriod := 1
 		catchCh := make(chan struct{})
 		toCh := make(chan struct{})
 		go func(to int, cch, tch chan struct{}, timeCh chan int) {
@@ -384,7 +373,6 @@ func onMessage(dc *webrtc.DataChannel, hch chan *entity.Hand, gch chan *entity.G
 			}
 			logElem("[Sys]: You Timeout! You Lose!\n")
 			jch <- entity.Lose
-			// setJudge(entity.Lose)
 			finishProcess(dc, board, finChan)
 			return
 		}
@@ -393,7 +381,6 @@ func onMessage(dc *webrtc.DataChannel, hch chan *entity.Hand, gch chan *entity.G
 		// 相手ターンへ遷移
 		tch <- false
 		board.ToggleTurn()
-		// setTurn("It's Opponent's Turn, Waiting...")
 		if err := dc.SendText(string(by)); err != nil {
 			log.Printf("failed to send guessMsg: %v", err)
 			return
@@ -403,12 +390,9 @@ func onMessage(dc *webrtc.DataChannel, hch chan *entity.Hand, gch chan *entity.G
 
 func logElem(msg string) {
 	log.Printf(msg)
-	// el := getElementByID("logs")
-	// el.Set("innerHTML", el.Get("innerHTML").String()+msg)
 }
 
 func finishProcess(dc *webrtc.DataChannel, board *entity.Board, finChan chan struct{}) {
-	// setTurn("Finish !!!")
 	exposeMsg := Message{Type: "expose", MyHand: board.MyHandText()}
 	by, _ := json.Marshal(exposeMsg)
 	if err := dc.SendText(string(by)); err != nil {
