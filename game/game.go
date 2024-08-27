@@ -63,6 +63,7 @@ type Game struct {
 	changeTimer        bool
 	changeMode         bool
 	changeTurn         bool
+	touchIDs           []ebiten.TouchID
 }
 
 func NewGame() *Game {
@@ -141,8 +142,17 @@ func (g *Game) Update() error {
 
 	switch g.mode {
 	case ModeInit:
+		var x, y int
 		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-			if g.searchButton.InWithCenter(ebiten.CursorPosition()) {
+			x, y = ebiten.CursorPosition()
+		}
+		g.touchIDs = inpututil.AppendJustPressedTouchIDs(g.touchIDs[:0])
+		for _, touchID := range g.touchIDs {
+			x, y = ebiten.TouchPosition(touchID)
+		}
+		if x != 0 && y != 0 {
+			// if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+			if g.searchButton.InWithCenter(x, y) {
 				g.changeMode = true
 				g.mode = ModeWaiting
 				g.message.SetMessage("対戦相手を探しています...")
@@ -220,8 +230,16 @@ func (g *Game) Update() error {
 			}
 		}
 	case ModePlaying:
+		var x, y int
 		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-			pushedButton := g.tenkey.WhichButtonByPosition(ebiten.CursorPosition())
+			x, y = ebiten.CursorPosition()
+		}
+		g.touchIDs = inpututil.AppendJustPressedTouchIDs(g.touchIDs[:0])
+		for _, touchID := range g.touchIDs {
+			x, y = ebiten.TouchPosition(touchID)
+		}
+		if x != 0 && y != 0 {
+			pushedButton := g.tenkey.WhichButtonByPosition(x, y)
 			if !g.isMyTurn {
 				return nil
 			}
@@ -234,7 +252,7 @@ func (g *Game) Update() error {
 				g.isJustPushed = true
 				return nil
 			}
-			if g.enterKey.In(ebiten.CursorPosition()) && !g.inputField.Addble() {
+			if g.enterKey.In(x, y) && !g.inputField.Addble() {
 				if g.inputField.Addble() {
 					return nil
 				}
@@ -248,7 +266,7 @@ func (g *Game) Update() error {
 				g.isJustCleared = true
 				return nil
 			}
-			if g.deleteKey.In(ebiten.CursorPosition()) {
+			if g.deleteKey.In(x, y) {
 				g.deleteKey.Clear()
 				for _, nb := range g.numberButtons {
 					nb.Enable()
