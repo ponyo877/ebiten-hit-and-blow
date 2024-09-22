@@ -1,26 +1,28 @@
 <!DOCTYPE html>
 <style>
-    body {
+    #wrap { width: 375px; height: 667px; padding: 0; overflow: hidden; }
+    #frame { width: 375px; height: 667px; border: 1px solid black; }
+    #frame {
         display: flex;
         justify-content: center;
         align-items: center;
-        height: 100svh;
-        margin: 0;
-        font-family: Arial, sans-serif;
-    }
-
-    iframe {
-        border: none;
+        -ms-zoom: 0.75;
+        -moz-transform: scale(0.75);
+        -moz-transform-origin: 0 0;
+        -o-transform: scale(0.75);
+        -o-transform-origin: 0 0;
+        -webkit-transform: scale(0.75);
+        -webkit-transform-origin: 0 0;
     }
 </style>
-
 <head>
     <title>P2P Hit & Blow</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0"> -->
+    <meta name="viewport" content="width=device-width">
     <meta property="og:title" content="P2P Hit & Blow">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://hit-and-blow.pages.dev/go">
-    
+
     <meta property="og:description"
         content="A Hit & Blow application that utilizes the WebRTC P2P DataChannel implemented with Go WebAssembly, allowing you to match and play with random strangers.">
     <meta property="og:locale" content="en_US">
@@ -36,4 +38,8 @@
     <meta name="twitter:creator" content="@ponyo877" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
 </head>
-<iframe src="/go/main.html" width="375" height="667"></iframe>
+
+<div id="wrap">
+    <iframe id="frame" src="/go/main.html"frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+</div>
+    
